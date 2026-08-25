@@ -77,10 +77,13 @@ body{
 .code{font-family:'IBM Plex Mono',monospace; font-size:.92em; color:var(--steel-500);}
 
 /* ---------- Login ---------- */
-#loginScreen{
+#gateScreen, #loginScreen{
   min-height:100vh; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(160deg,var(--navy-900),var(--navy-700) 70%);
 }
+#loginScreen{display:none;}
+.gate-err{color:var(--red-500); font-size:12.5px; margin-top:10px; display:none;}
+.gate-err.show{display:block;}
 .login-card{
   width:380px; background:var(--card-bg); border-radius:var(--radius);
   box-shadow:var(--shadow-md); padding:32px 30px; text-align:center;
@@ -342,6 +345,21 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
 </style>
 </head>
 <body>
+
+<!-- ============ ACCESS GATE (decoy passcode, not real security) ============ -->
+<div id="gateScreen">
+  <div class="login-card">
+    <div class="brand">CAMS</div>
+    <h1>รหัสผ่านเข้าใช้งาน</h1>
+    <p class="sub">กรอกรหัสผ่านเพื่อเข้าสู่ระบบต้นแบบ CAMS</p>
+    <div class="field">
+      <label>รหัสผ่าน</label>
+      <input type="password" id="gateCode" autocomplete="off" onkeydown="if(event.key==='Enter') checkGateCode()">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="checkGateCode()">เข้าสู่ระบบ</button>
+    <div class="gate-err" id="gateErr">รหัสผ่านไม่ถูกต้อง</div>
+  </div>
+</div>
 
 <!-- ============ LOGIN SCREEN ============ -->
 <div id="loginScreen">
@@ -13204,6 +13222,18 @@ function genAssets(){
     });
   }
   return list;
+}
+
+/* ---------- Access gate (decoy passcode, not real security) ---------- */
+const GATE_CODE = 'RCC2569';
+function checkGateCode(){
+  const val = document.getElementById('gateCode').value;
+  if(val === GATE_CODE){
+    document.getElementById('gateScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+  } else {
+    document.getElementById('gateErr').classList.add('show');
+  }
 }
 
 /* ---------- Login / logout ---------- */

@@ -13192,36 +13192,63 @@ let LOG_SEQ = 1;
 
 function pad(n,len){ return String(n).padStart(len,'0'); }
 
-function genAssets(){
-  const statuses = ['IN_STOCK','IN_STOCK','ASSIGNED','ASSIGNED','ASSIGNED','BORROWED','REPAIR','DAMAGED','INSPECTION'];
-  const list = [];
-  for(let i=1;i<=42;i++){
-    const status = statuses[i % statuses.length];
-    const unit = UNITS[i % UNITS.length];
-    const holder = status === 'IN_STOCK' ? '(อยู่ในคลัง)' : HOLDERS[i % (HOLDERS.length-1)];
-    const model = MODELS[i % MODELS.length];
-    list.push({
-      id: i,
-      asset_code: 'COM-' + pad(2569,4) + '-' + pad(i,4),
-      serial_number: 'SN' + (100000 + i*37),
-      model: model,
-      category: MODEL_CATEGORY[model],
-      type: MODEL_TYPE[model] || 'อื่นๆ',
-      status: status,
+/* ---------- Google Sheet data source (read+write via Apps Script Web App) ---------- */
+const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzMb4DSBPyMWpkr3--a80RgN1qLfoc2SXDUu143BLAUcWzO3KTjQmJSRCroEApLtF-KHQ/exec';
+
+async function loadAssetsFromSheet(){
+  try{
+    const res = await fetch(SHEET_API_URL);
+    const rows = await res.json();
+    ASSETS = rows.map((r, idx) => ({
+      id: idx + 1,
+      asset_code: r.asset_code,
+      serial_number: r.serial_number,
+      model: r.model,
+      category: r.category,
+      type: r.type || 'อื่นๆ',
+      status: r.status,
       prev_status: null,
-      unit: unit,
-      holder: holder,
-      location: unit + ' / คลังอุปกรณ์',
-      acquired_date: '25' + (67 + (i%3)) + '-0' + ((i%9)+1) + '-1' + (i%9),
-      remarks: '',
+      unit: r.unit,
+      holder: r.holder,
+      location: r.location,
+      acquired_date: r.acquired_date,
+      remarks: r.remarks || '',
       attachments: [],
       history: [
-        {title:'รับเข้าคลัง', doc:'REC-2568-'+pad(300+i,5), meta:'โดย ระบบ (seed data)', date:'25 พ.ค. 2568'},
-        {title:'เบิกจ่ายให้หน่วย ' + unit, doc:'ISS-2568-'+pad(400+i,5), meta:'โดย จนท.พัสดุ', date:'02 มิ.ย. 2568'},
+        {title:'ข้อมูลเริ่มต้นจาก Google Sheet', doc:'-', meta:'ซิงก์จาก CAMS Assets', date: r.acquired_date || '-'},
       ],
-    });
+    }));
+  }catch(e){
+    showToast('โหลดข้อมูลจาก Google Sheet ไม่สำเร็จ: ' + e.message);
   }
-  return list;
+}
+
+async function syncAddToSheet(asset){
+  try{
+    await fetch(SHEET_API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'add', asset:{
+        asset_code: asset.asset_code, serial_number: asset.serial_number, model: asset.model,
+        category: asset.category, type: asset.type, status: asset.status, unit: asset.unit,
+        holder: asset.holder, location: asset.location, acquired_date: asset.acquired_date, remarks: asset.remarks,
+      }}),
+    });
+  }catch(e){
+    showToast('ซิงก์ไป Google Sheet ไม่สำเร็จ: ' + e.message);
+  }
+}
+
+async function syncUpdateToSheet(assetCode, patch){
+  try{
+    await fetch(SHEET_API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'update', asset_code: assetCode, patch: patch }),
+    });
+  }catch(e){
+    showToast('ซิงก์ไป Google Sheet ไม่สำเร็จ: ' + e.message);
+  }
 }
 
 /* ---------- Access gate (decoy passcode, not real security) ---------- */
@@ -13239,13 +13266,15 @@ function checkGateCode(){
 
 /* ---------- Login / logout ---------- */
 let CURRENT_ROLE = 'OFFICER';
-function doLogin(){
+async function doLogin(){
   CURRENT_ROLE = document.getElementById('loginRole').value;
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appShell').classList.add('active');
   document.getElementById('whoRole').textContent = CURRENT_ROLE;
   document.getElementById('whoAvatar').textContent = CURRENT_ROLE.charAt(0);
   applyRoleView();
+  showToast('กำลังโหลดข้อมูลจาก Google Sheet...');
+  await ASSETS_LOAD_PROMISE;
   goView('dashboard');
   showToast('เข้าสู่ระบบสำเร็จ (โหมดสาธิต) — บทบาท: ' + CURRENT_ROLE);
 }
@@ -13620,6 +13649,7 @@ function sendToDisposal(){
   showConfirm(`ยืนยันส่งจำหน่ายอุปกรณ์ <b>${a.asset_code}</b> ใช่หรือไม่? รายการจะย้ายไปยังหน้า "จำหน่าย" เพื่อรออนุมัติ`, function(){
     a._prevStatus = a.status;
     a.status = 'DISPOSAL';
+    syncUpdateToSheet(a.asset_code, {status: a.status});
     a.history.push({title:'เสนอจำหน่าย', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
     closeModal('assetModalBackdrop');
     showToast('ส่งจำหน่ายอุปกรณ์ ' + a.asset_code + ' แล้ว รออนุมัติที่หน้า "จำหน่าย"');
@@ -13650,6 +13680,7 @@ function undoDisposal(id){
   showConfirm(`ย้อนกลับสถานะของ <b>${a.asset_code}</b> ไปเป็น "${STATUS_META[a._prevStatus].label}" ใช่หรือไม่?`, function(){
     a.status = a._prevStatus;
     a._prevStatus = null;
+    syncUpdateToSheet(a.asset_code, {status: a.status});
     a.history.push({title:'ย้อนกลับการเสนอจำหน่าย', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
     renderDisposalList();
     renderRegistry(false);
@@ -13662,6 +13693,7 @@ function finalizeDisposal(id){
   showConfirm(`ยืนยันจำหน่ายอุปกรณ์ <b>${a.asset_code}</b> ถาวรใช่หรือไม่? <br><b style="color:var(--red-500)">การกระทำนี้ย้อนกลับไม่ได้</b>`, function(){
     a.status = 'DISPOSED';
     a._prevStatus = null;
+    syncUpdateToSheet(a.asset_code, {status: a.status});
     a.history.push({title:'จำหน่ายถาวร', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
     renderDisposalList();
     renderRegistry(false);
@@ -13692,6 +13724,7 @@ function submitTransfer(){
   const a = ASSETS.find(x=>x.id===assetId);
   showConfirm(`ยืนยันโอน <b>${a.asset_code}</b> ไปยัง <b>${holder}</b> (${unit}) ใช่หรือไม่?`, function(){
     a.unit = unit; a.holder = holder; a.status = 'ASSIGNED';
+    syncUpdateToSheet(a.asset_code, {unit: a.unit, holder: a.holder, status: a.status});
     a.history.push({title:'โอนอุปกรณ์ไปยัง ' + holder + ' (' + unit + ')', doc:'TRF-2569-'+pad(LOG_SEQ++,5), meta:(remarks||'ไม่มีหมายเหตุ'), date:'วันนี้'});
     document.getElementById('trfRemarks').value='';
     renderTransferForm2Reset();
@@ -13762,6 +13795,7 @@ function submitReceive(){
     ],
   };
   ASSETS.push(newAsset);
+  syncAddToSheet(newAsset);
 
   document.getElementById('rcvResultQr').innerHTML = renderQrSvg(qrPayload(newAsset.asset_code), 176);
   document.getElementById('rcvResultCode').textContent = newAsset.asset_code;
@@ -13922,7 +13956,7 @@ document.addEventListener('click', function(e){
 });
 
 /* ---------- Init ---------- */
-ASSETS = genAssets();
+const ASSETS_LOAD_PROMISE = loadAssetsFromSheet();
 </script>
 </body>
 </html>

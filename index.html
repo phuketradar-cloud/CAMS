@@ -188,6 +188,11 @@ table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
 .data-table td{padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle;}
 .data-table tbody tr:hover{background:var(--steel-100);}
 .data-table tbody tr{cursor:pointer;}
+.reg-del-btn{
+  border:none; background:none; color:#ff1a1a; font-size:16px; font-weight:800; cursor:pointer;
+  width:26px; height:26px; border-radius:6px; line-height:1;
+}
+.reg-del-btn:hover{background:var(--red-100);}
 
 /* ---------- Tags ---------- */
 .tag{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;}
@@ -487,7 +492,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
             </div>
             <div class="result-count" id="regResultCount"></div>
             <table class="data-table">
-              <thead><tr><th>รหัสครุภัณฑ์</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th><th>หน่วย</th><th>สถานะ</th></tr></thead>
+              <thead><tr><th>รหัสครุภัณฑ์</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th><th>หน่วย</th><th>สถานะ</th><th></th></tr></thead>
               <tbody id="registryTbody"></tbody>
             </table>
           </div>
@@ -13251,6 +13256,29 @@ async function syncUpdateToSheet(assetCode, patch){
   }
 }
 
+async function syncDeleteToSheet(assetCode){
+  try{
+    await fetch(SHEET_API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'delete', asset_code: assetCode }),
+    });
+  }catch(e){
+    showToast('ซิงก์ไป Google Sheet ไม่สำเร็จ: ' + e.message);
+  }
+}
+
+function deleteAsset(id){
+  const a = ASSETS.find(x=>x.id===id);
+  if(!a) return;
+  showConfirm(`ลบรายการ <b>${a.asset_code}</b> ถาวรใช่หรือไม่? <br><b style="color:var(--red-500)">การกระทำนี้ย้อนกลับไม่ได้</b>`, function(){
+    ASSETS = ASSETS.filter(x=>x.id!==id);
+    syncDeleteToSheet(a.asset_code);
+    renderRegistry(false);
+    showToast('ลบรายการ ' + a.asset_code + ' แล้ว');
+  }, {title:'ลบรายการ', okLabel:'ลบถาวร', danger:true});
+}
+
 /* ---------- Access gate (decoy passcode, not real security) ---------- */
 const GATE_CODE = 'RCC2569';
 function checkGateCode(){
@@ -13521,8 +13549,9 @@ function renderRegistry(resetFilters){
       <td class="code">${a.asset_code}</td><td>${a.type}</td><td>${a.model}</td><td class="code">${a.serial_number}</td>
       <td>${a.holder}</td><td>${a.unit}</td>
       <td><span class="tag ${STATUS_META[a.status].cls}">${STATUS_META[a.status].label}</span></td>
+      <td><button class="reg-del-btn" onclick="event.stopPropagation(); deleteAsset(${a.id})" title="ลบรายการ">✕</button></td>
     </tr>
-  `).join('') || `<tr><td colspan="7" style="text-align:center; color:var(--text-400); padding:24px;">ไม่พบรายการที่ตรงกับเงื่อนไข</td></tr>`;
+  `).join('') || `<tr><td colspan="8" style="text-align:center; color:var(--text-400); padding:24px;">ไม่พบรายการที่ตรงกับเงื่อนไข</td></tr>`;
 }
 
 /* ---------- Asset detail modal ---------- */

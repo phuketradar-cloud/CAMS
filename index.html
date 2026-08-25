@@ -593,6 +593,11 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
                 <label>หมายเหตุ</label>
                 <textarea id="rcvRemarks" rows="3" placeholder="เช่น แหล่งที่มา / เลขที่สัญญาจัดซื้อ (ถ้ามี)"></textarea>
               </div>
+              <div class="field full">
+                <label>ไฟล์ภาพแนบ (สูงสุด 10 ภาพ)</label>
+                <div class="attach-grid" id="rcvAttachGrid"></div>
+                <input type="file" id="rcvFileInput" accept="image/*" multiple style="display:none" onchange="onRcvFilesSelected(event)">
+              </div>
             </div>
           </div>
           <div class="modal-footer" style="position:static;">
@@ -13816,6 +13821,49 @@ function initReceiveForm(){
   refreshReceiveDatalists();
   if(!document.getElementById('rcvCode').value) autoGenReceiveCode();
   if(!document.getElementById('rcvDate').value) document.getElementById('rcvDate').value = new Date().toISOString().slice(0,10);
+  renderRcvAttachments();
+}
+
+/* ---------- Receive form image attachments (max 10, client-side only — not synced to the Sheet) ---------- */
+const RCV_ATTACH_MAX = 10;
+let rcvAttachments = [];
+
+function renderRcvAttachments(){
+  const grid = document.getElementById('rcvAttachGrid');
+  let html = rcvAttachments.map((f, idx) => `
+    <div class="attach-tile" onclick="openLightbox('${f.data}')">
+      <img src="${f.data}" alt="${f.name}">
+      <button class="rm" onclick="event.stopPropagation(); removeRcvAttachment(${idx})">✕</button>
+      <div class="caption">${f.name}</div>
+    </div>`).join('');
+  if(rcvAttachments.length < RCV_ATTACH_MAX){
+    html += `<div class="attach-drop" onclick="document.getElementById('rcvFileInput').click()"><div style="font-size:22px;">+</div>เพิ่มภาพ (${rcvAttachments.length}/${RCV_ATTACH_MAX})</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function onRcvFilesSelected(e){
+  const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+  const remaining = RCV_ATTACH_MAX - rcvAttachments.length;
+  if(files.length > remaining) showToast('แนบได้สูงสุด ' + RCV_ATTACH_MAX + ' ภาพ — เลือกได้อีก ' + remaining + ' ภาพ');
+  const toAdd = files.slice(0, remaining);
+  let pending = toAdd.length;
+  if(pending === 0){ e.target.value = ''; return; }
+  toAdd.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      rcvAttachments.push({name: file.name, data: ev.target.result, isImage: true});
+      pending--;
+      if(pending === 0) renderRcvAttachments();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function removeRcvAttachment(idx){
+  rcvAttachments.splice(idx, 1);
+  renderRcvAttachments();
 }
 
 function nextAssetSeq(){
@@ -13858,7 +13906,7 @@ function submitReceive(){
     location: location || '-',
     acquired_date: date,
     remarks: remarks,
-    attachments: [],
+    attachments: rcvAttachments,
     history: [
       {title:'รับเข้าคลัง', doc:'REC-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE + (remarks ? ' — ' + remarks : ''), date:'วันนี้'},
     ],
@@ -13871,6 +13919,8 @@ function submitReceive(){
   rememberReceiveValue('location', location);
   rememberReceiveValue('serial', serial);
   refreshReceiveDatalists();
+  rcvAttachments = [];
+  renderRcvAttachments();
 
   document.getElementById('rcvResultQr').innerHTML = renderQrSvg(qrPayload(newAsset.asset_code), 176);
   document.getElementById('rcvResultCode').textContent = newAsset.asset_code;

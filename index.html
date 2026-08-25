@@ -369,11 +369,11 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
     <p class="sub">Communication Asset Management System — RTAF RCC</p>
     <div class="field">
       <label>ชื่อผู้ใช้</label>
-      <input type="text" id="loginUsername" value="operator01" autocomplete="off">
+      <input type="text" id="loginUsername" autocomplete="off">
     </div>
     <div class="field">
       <label>รหัสผ่าน</label>
-      <input type="password" id="loginPassword" value="••••••••" autocomplete="off">
+      <input type="password" id="loginPassword" autocomplete="off">
     </div>
     <div class="field">
       <label>บทบาท (สำหรับสาธิตต้นแบบ)</label>
@@ -13233,6 +13233,7 @@ function checkGateCode(){
     document.getElementById('loginScreen').style.display = 'flex';
   } else {
     document.getElementById('gateErr').classList.add('show');
+    document.getElementById('gateCode').value = '';
   }
 }
 

@@ -562,19 +562,23 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
               </div>
               <div class="field">
                 <label>ชนิด</label>
-                <select class="filter-select" style="width:100%" id="rcvType" onchange="onRcvTypeChange()"></select>
+                <input type="text" class="filter-select" style="width:100%" id="rcvType" list="rcvTypeList" autocomplete="off">
+                <datalist id="rcvTypeList"></datalist>
               </div>
               <div class="field">
                 <label>รุ่น/แบบ</label>
-                <select class="filter-select" style="width:100%" id="rcvModel"></select>
+                <input type="text" class="filter-select" style="width:100%" id="rcvModel" list="rcvModelList" autocomplete="off">
+                <datalist id="rcvModelList"></datalist>
               </div>
               <div class="field">
                 <label>หมายเลขเครื่อง (S/N)</label>
-                <input type="text" id="rcvSerial" class="mono" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+                <input type="text" id="rcvSerial" class="mono" list="rcvSerialList" autocomplete="off" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+                <datalist id="rcvSerialList"></datalist>
               </div>
               <div class="field">
                 <label>หน่วยที่รับเข้า</label>
-                <select class="filter-select" style="width:100%" id="rcvUnit"></select>
+                <input type="text" class="filter-select" style="width:100%" id="rcvUnit" list="rcvUnitList" autocomplete="off">
+                <datalist id="rcvUnitList"></datalist>
               </div>
               <div class="field">
                 <label>วันที่รับเข้า</label>
@@ -13779,24 +13783,33 @@ function renderTransferForm2Reset(){
 }
 
 /* ---------- Receive (รับเข้า) — registers a new asset and mints its QR ---------- */
-function initReceiveForm(){
-  const typeSel = document.getElementById('rcvType');
-  const unitSel = document.getElementById('rcvUnit');
-  if(!typeSel.dataset.init){
-    typeSel.innerHTML = TYPES.map(t=>`<option value="${t}">${t}</option>`).join('');
-    unitSel.innerHTML = UNITS.map(u=>`<option value="${u}">${u}</option>`).join('');
-    typeSel.dataset.init = '1';
-    onRcvTypeChange();
-  }
-  if(!document.getElementById('rcvCode').value) autoGenReceiveCode();
-  if(!document.getElementById('rcvDate').value) document.getElementById('rcvDate').value = new Date().toISOString().slice(0,10);
+/* จำค่าที่เคยกรอกไว้ในเบราว์เซอร์ (localStorage) เพื่อ autofill ช่องชนิด/รุ่น/S-N/หน่วย — ยกเว้นรหัสครุภัณฑ์ */
+const RECENT_KEY = 'cams_recent_receive_values';
+function loadRecentValues(){
+  try{ return JSON.parse(localStorage.getItem(RECENT_KEY)) || {type:[], model:[], unit:[], serial:[]}; }
+  catch(e){ return {type:[], model:[], unit:[], serial:[]}; }
+}
+function rememberReceiveValue(field, value){
+  if(!value) return;
+  const recent = loadRecentValues();
+  recent[field] = [value, ...recent[field].filter(v=>v!==value)].slice(0, 20);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+}
+function fillDatalist(id, values){
+  document.getElementById(id).innerHTML = values.map(v=>`<option value="${v}"></option>`).join('');
+}
+function refreshReceiveDatalists(){
+  const recent = loadRecentValues();
+  fillDatalist('rcvTypeList', [...new Set([...TYPES, ...recent.type])]);
+  fillDatalist('rcvModelList', [...new Set([...MODELS, ...recent.model])]);
+  fillDatalist('rcvUnitList', [...new Set([...UNITS, ...recent.unit])]);
+  fillDatalist('rcvSerialList', recent.serial);
 }
 
-function onRcvTypeChange(){
-  const type = document.getElementById('rcvType').value;
-  const modelSel = document.getElementById('rcvModel');
-  const matching = MODELS.filter(m => MODEL_TYPE[m] === type);
-  modelSel.innerHTML = matching.map(m=>`<option value="${m}">${m}</option>`).join('');
+function initReceiveForm(){
+  refreshReceiveDatalists();
+  if(!document.getElementById('rcvCode').value) autoGenReceiveCode();
+  if(!document.getElementById('rcvDate').value) document.getElementById('rcvDate').value = new Date().toISOString().slice(0,10);
 }
 
 function nextAssetSeq(){
@@ -13845,6 +13858,11 @@ function submitReceive(){
   };
   ASSETS.push(newAsset);
   syncAddToSheet(newAsset);
+  rememberReceiveValue('type', type);
+  rememberReceiveValue('model', model);
+  rememberReceiveValue('unit', unit);
+  rememberReceiveValue('serial', serial);
+  refreshReceiveDatalists();
 
   document.getElementById('rcvResultQr').innerHTML = renderQrSvg(qrPayload(newAsset.asset_code), 176);
   document.getElementById('rcvResultCode').textContent = newAsset.asset_code;

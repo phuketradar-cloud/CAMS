@@ -576,9 +576,14 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
                 <datalist id="rcvSerialList"></datalist>
               </div>
               <div class="field">
-                <label>หน่วยที่รับเข้า</label>
-                <input type="text" class="filter-select" style="width:100%" id="rcvUnit" list="rcvUnitList" autocomplete="off">
-                <datalist id="rcvUnitList"></datalist>
+                <label>ผู้ใช้งาน</label>
+                <input type="text" class="filter-select" style="width:100%" id="rcvHolder" list="rcvHolderList" autocomplete="off">
+                <datalist id="rcvHolderList"></datalist>
+              </div>
+              <div class="field">
+                <label>สถานที่ติดตั้ง</label>
+                <input type="text" class="filter-select" style="width:100%" id="rcvLocation" list="rcvLocationList" autocomplete="off">
+                <datalist id="rcvLocationList"></datalist>
               </div>
               <div class="field">
                 <label>วันที่รับเข้า</label>
@@ -13786,8 +13791,8 @@ function renderTransferForm2Reset(){
 /* จำค่าที่เคยกรอกไว้ในเบราว์เซอร์ (localStorage) เพื่อ autofill ช่องชนิด/รุ่น/S-N/หน่วย — ยกเว้นเลขพัสดุ ทอ. */
 const RECENT_KEY = 'cams_recent_receive_values';
 function loadRecentValues(){
-  try{ return JSON.parse(localStorage.getItem(RECENT_KEY)) || {type:[], model:[], unit:[], serial:[]}; }
-  catch(e){ return {type:[], model:[], unit:[], serial:[]}; }
+  try{ return JSON.parse(localStorage.getItem(RECENT_KEY)) || {type:[], model:[], holder:[], location:[], serial:[]}; }
+  catch(e){ return {type:[], model:[], holder:[], location:[], serial:[]}; }
 }
 function rememberReceiveValue(field, value){
   if(!value) return;
@@ -13802,7 +13807,8 @@ function refreshReceiveDatalists(){
   const recent = loadRecentValues();
   fillDatalist('rcvTypeList', [...new Set([...TYPES, ...recent.type])]);
   fillDatalist('rcvModelList', [...new Set([...MODELS, ...recent.model])]);
-  fillDatalist('rcvUnitList', [...new Set([...UNITS, ...recent.unit])]);
+  fillDatalist('rcvHolderList', recent.holder);
+  fillDatalist('rcvLocationList', recent.location);
   fillDatalist('rcvSerialList', recent.serial);
 }
 
@@ -13830,7 +13836,8 @@ function submitReceive(){
   const type = document.getElementById('rcvType').value;
   const model = document.getElementById('rcvModel').value;
   const serial = document.getElementById('rcvSerial').value.trim();
-  const unit = document.getElementById('rcvUnit').value;
+  const holder = document.getElementById('rcvHolder').value.trim();
+  const location = document.getElementById('rcvLocation').value.trim();
   const date = document.getElementById('rcvDate').value;
   const remarks = document.getElementById('rcvRemarks').value.trim();
 
@@ -13844,11 +13851,11 @@ function submitReceive(){
     model: model,
     category: MODEL_CATEGORY[model] || 'อื่นๆ',
     type: type,
-    status: 'IN_STOCK',
+    status: holder ? 'ASSIGNED' : 'IN_STOCK',
     prev_status: null,
-    unit: unit,
-    holder: '(อยู่ในคลัง)',
-    location: unit + ' / คลังอุปกรณ์',
+    unit: '',
+    holder: holder || '(อยู่ในคลัง)',
+    location: location || '-',
     acquired_date: date,
     remarks: remarks,
     attachments: [],
@@ -13860,7 +13867,8 @@ function submitReceive(){
   syncAddToSheet(newAsset);
   rememberReceiveValue('type', type);
   rememberReceiveValue('model', model);
-  rememberReceiveValue('unit', unit);
+  rememberReceiveValue('holder', holder);
+  rememberReceiveValue('location', location);
   rememberReceiveValue('serial', serial);
   refreshReceiveDatalists();
 

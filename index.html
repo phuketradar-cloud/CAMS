@@ -561,6 +561,10 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
                 <div class="form-note">ใช้เป็นข้อมูลที่เข้ารหัสลง QR เฉพาะของอุปกรณ์ชิ้นนี้</div>
               </div>
               <div class="field">
+                <label>ชนิด</label>
+                <select class="filter-select" style="width:100%" id="rcvType" onchange="onRcvTypeChange()"></select>
+              </div>
+              <div class="field">
                 <label>รุ่น/แบบ</label>
                 <select class="filter-select" style="width:100%" id="rcvModel"></select>
               </div>
@@ -13166,17 +13170,21 @@ const STATUS_META = {
 
 const UNITS = ['ผลก.ทอ.', 'บน.1', 'บน.2', 'บน.4', 'บน.7', 'ศคพ.'];
 const HOLDERS = ['ร.อ.สมชาย ใจดี', 'พ.อ.อ.วิชัย รักงาน', 'จ.อ.ประยุทธ มั่นคง', 'ร.ต.สุนทร ศรีสุข', 'จ.ท.อนันต์ ไชยวงศ์', '(อยู่ในคลัง)'];
-const TYPES = ['วิทยุสื่อสาร', 'คอมพิวเตอร์', 'ปริ้นเตอร์', 'อื่นๆ'];
+const TYPES = ['วิทยุสื่อสาร', 'คอมพิวเตอร์', 'ปริ้นเตอร์', 'จอแสดงผล', 'อื่นๆ'];
 const MODELS = [
   'Motorola APX 8000', 'Harris XL-200P', 'Icom IC-F5021', 'Kenwood TK-3701D', 'Codan Envoy X2', 'Sepura SC21',
   'Dell OptiPlex 7090', 'HP EliteDesk 800 G6', 'Lenovo ThinkCentre M70q',
   'HP LaserJet Pro M404dn', 'Canon imageCLASS MF445dw',
+  'Dell P2422H', 'ViewSonic VA2447-mh',
+  'อื่นๆ (ระบุในหมายเหตุ)',
 ];
 const MODEL_TYPE = {
   'Motorola APX 8000': 'วิทยุสื่อสาร', 'Harris XL-200P': 'วิทยุสื่อสาร', 'Icom IC-F5021': 'วิทยุสื่อสาร',
   'Kenwood TK-3701D': 'วิทยุสื่อสาร', 'Codan Envoy X2': 'วิทยุสื่อสาร', 'Sepura SC21': 'วิทยุสื่อสาร',
   'Dell OptiPlex 7090': 'คอมพิวเตอร์', 'HP EliteDesk 800 G6': 'คอมพิวเตอร์', 'Lenovo ThinkCentre M70q': 'คอมพิวเตอร์',
   'HP LaserJet Pro M404dn': 'ปริ้นเตอร์', 'Canon imageCLASS MF445dw': 'ปริ้นเตอร์',
+  'Dell P2422H': 'จอแสดงผล', 'ViewSonic VA2447-mh': 'จอแสดงผล',
+  'อื่นๆ (ระบุในหมายเหตุ)': 'อื่นๆ',
 };
 const MODEL_CATEGORY = {
   'Motorola APX 8000': 'วิทยุมือถือ (Handheld)',
@@ -13190,6 +13198,9 @@ const MODEL_CATEGORY = {
   'Lenovo ThinkCentre M70q': 'คอมพิวเตอร์ขนาดเล็ก (Mini PC)',
   'HP LaserJet Pro M404dn':     'เครื่องพิมพ์เลเซอร์ (Laser)',
   'Canon imageCLASS MF445dw':   'เครื่องพิมพ์มัลติฟังก์ชัน (MFP)',
+  'Dell P2422H':             'จอภาพ LED (Monitor)',
+  'ViewSonic VA2447-mh':     'จอภาพ LED (Monitor)',
+  'อื่นๆ (ระบุในหมายเหตุ)':    'อื่นๆ',
 };
 
 let ASSETS = [];
@@ -13769,15 +13780,23 @@ function renderTransferForm2Reset(){
 
 /* ---------- Receive (รับเข้า) — registers a new asset and mints its QR ---------- */
 function initReceiveForm(){
-  const modelSel = document.getElementById('rcvModel');
+  const typeSel = document.getElementById('rcvType');
   const unitSel = document.getElementById('rcvUnit');
-  if(!modelSel.dataset.init){
-    modelSel.innerHTML = MODELS.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(!typeSel.dataset.init){
+    typeSel.innerHTML = TYPES.map(t=>`<option value="${t}">${t}</option>`).join('');
     unitSel.innerHTML = UNITS.map(u=>`<option value="${u}">${u}</option>`).join('');
-    modelSel.dataset.init = '1';
+    typeSel.dataset.init = '1';
+    onRcvTypeChange();
   }
   if(!document.getElementById('rcvCode').value) autoGenReceiveCode();
   if(!document.getElementById('rcvDate').value) document.getElementById('rcvDate').value = new Date().toISOString().slice(0,10);
+}
+
+function onRcvTypeChange(){
+  const type = document.getElementById('rcvType').value;
+  const modelSel = document.getElementById('rcvModel');
+  const matching = MODELS.filter(m => MODEL_TYPE[m] === type);
+  modelSel.innerHTML = matching.map(m=>`<option value="${m}">${m}</option>`).join('');
 }
 
 function nextAssetSeq(){
@@ -13795,6 +13814,7 @@ function autoGenReceiveCode(){
 
 function submitReceive(){
   const code = document.getElementById('rcvCode').value.trim();
+  const type = document.getElementById('rcvType').value;
   const model = document.getElementById('rcvModel').value;
   const serial = document.getElementById('rcvSerial').value.trim();
   const unit = document.getElementById('rcvUnit').value;
@@ -13810,7 +13830,7 @@ function submitReceive(){
     serial_number: serial || '-',
     model: model,
     category: MODEL_CATEGORY[model] || 'อื่นๆ',
-    type: MODEL_TYPE[model] || 'อื่นๆ',
+    type: type,
     status: 'IN_STOCK',
     prev_status: null,
     unit: unit,

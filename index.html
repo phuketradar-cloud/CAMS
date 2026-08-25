@@ -477,7 +477,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
             <div class="toolbar">
               <div class="search-box" id="regSearchBox">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="regSearch" placeholder="ค้นหา: รหัสครุภัณฑ์ / S/N / รุ่น / ผู้ครอบครอง" oninput="onRegistryFilter()">
+                <input type="text" id="regSearch" placeholder="ค้นหา: เลขพัสดุ ทอ. / S/N / รุ่น / ผู้ครอบครอง" oninput="onRegistryFilter()">
                 <button class="clear-btn" onclick="clearRegSearch()">✕</button>
               </div>
               <select class="filter-select" id="regTypeFilter" onchange="onRegistryFilter()">
@@ -492,7 +492,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
             </div>
             <div class="result-count" id="regResultCount"></div>
             <table class="data-table">
-              <thead><tr><th>รหัสครุภัณฑ์</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th><th>หน่วย</th><th>สถานะ</th><th></th></tr></thead>
+              <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th><th>หน่วย</th><th>สถานะ</th><th></th></tr></thead>
               <tbody id="registryTbody"></tbody>
             </table>
           </div>
@@ -535,7 +535,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
           <div class="card-header"><h3>รายการเสนอจำหน่าย (DSP-)</h3></div>
           <div class="card-body" style="padding:0;">
             <table class="data-table">
-              <thead><tr><th>รหัสครุภัณฑ์</th><th>รุ่น/แบบ</th><th>สถานะก่อนเสนอจำหน่าย</th><th>หน่วย</th><th style="width:220px;">ดำเนินการ</th></tr></thead>
+              <thead><tr><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>สถานะก่อนเสนอจำหน่าย</th><th>หน่วย</th><th style="width:220px;">ดำเนินการ</th></tr></thead>
               <tbody id="disposalTbody"></tbody>
             </table>
             <div id="disposalEmpty" class="placeholder-box" style="display:none;">
@@ -553,7 +553,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
           <div class="card-body">
             <div class="form-grid">
               <div class="field full">
-                <label>รหัสครุภัณฑ์</label>
+                <label>เลขพัสดุ ทอ.</label>
                 <div style="display:flex; gap:8px;">
                   <input type="text" id="rcvCode" class="mono" style="flex:1; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
                   <button class="btn btn-outline btn-sm" onclick="autoGenReceiveCode()">สร้างอัตโนมัติ</button>
@@ -614,7 +614,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
                 <button class="btn btn-outline btn-sm" id="scanStopBtn" style="display:none;" onclick="stopScan()">ปิดกล้อง</button>
               </div>
               <div class="scan-manual">
-                <label style="display:block; font-size:12.5px; color:var(--text-600); margin-bottom:6px; font-weight:500;">หรือพิมพ์/วางรหัสครุภัณฑ์ด้วยตนเอง</label>
+                <label style="display:block; font-size:12.5px; color:var(--text-600); margin-bottom:6px; font-weight:500;">หรือพิมพ์/วางเลขพัสดุ ทอ.ด้วยตนเอง</label>
                 <div class="row">
                   <input type="text" id="scanManualInput" class="mono" placeholder="เช่น COM-2569-0001" onkeydown="if(event.key==='Enter') lookupScanManual()">
                   <button class="btn btn-steel btn-sm" onclick="lookupScanManual()">ค้นหา</button>
@@ -13783,7 +13783,7 @@ function renderTransferForm2Reset(){
 }
 
 /* ---------- Receive (รับเข้า) — registers a new asset and mints its QR ---------- */
-/* จำค่าที่เคยกรอกไว้ในเบราว์เซอร์ (localStorage) เพื่อ autofill ช่องชนิด/รุ่น/S-N/หน่วย — ยกเว้นรหัสครุภัณฑ์ */
+/* จำค่าที่เคยกรอกไว้ในเบราว์เซอร์ (localStorage) เพื่อ autofill ช่องชนิด/รุ่น/S-N/หน่วย — ยกเว้นเลขพัสดุ ทอ. */
 const RECENT_KEY = 'cams_recent_receive_values';
 function loadRecentValues(){
   try{ return JSON.parse(localStorage.getItem(RECENT_KEY)) || {type:[], model:[], unit:[], serial:[]}; }
@@ -13834,8 +13834,8 @@ function submitReceive(){
   const date = document.getElementById('rcvDate').value;
   const remarks = document.getElementById('rcvRemarks').value.trim();
 
-  if(!code){ showToast('กรุณาระบุรหัสครุภัณฑ์'); return; }
-  if(ASSETS.some(a=>a.asset_code===code)){ showToast('รหัสครุภัณฑ์นี้มีอยู่ในระบบแล้ว'); return; }
+  if(!code){ showToast('กรุณาระบุเลขพัสดุ ทอ.'); return; }
+  if(ASSETS.some(a=>a.asset_code===code)){ showToast('เลขพัสดุ ทอ.นี้มีอยู่ในระบบแล้ว'); return; }
 
   const newAsset = {
     id: Math.max(0, ...ASSETS.map(a=>a.id)) + 1,

@@ -697,29 +697,34 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
       <!-- ===== Borrow-Return (ยืม-คืน) ===== -->
       <div class="view" id="view-borrow">
         <div class="card" style="max-width:720px; margin-bottom:16px;">
-          <div class="card-header"><h3>บันทึกการยืม (BRW-)</h3></div>
-          <div class="card-body">
-            <div class="form-grid">
-              <div class="field full">
-                <label>เลือกอุปกรณ์</label>
-                <select class="filter-select" style="width:100%" id="brwPageAsset"></select>
-              </div>
-              <div class="field">
-                <label>ผู้ยืม</label>
-                <input type="text" class="filter-select" style="width:100%" id="brwPageBorrower" list="brwBorrowerList" autocomplete="off">
-              </div>
-              <div class="field">
-                <label>กำหนดคืนวันที่</label>
-                <input type="date" id="brwPageDueDate" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
-              </div>
-              <div class="field full">
-                <label>หมายเหตุ</label>
-                <textarea id="brwPageRemarks" rows="2" placeholder="เช่น ใช้ในภารกิจ / ยืมทดสอบ"></textarea>
+          <div class="card-header" style="cursor:pointer;" onclick="toggleBorrowForm()">
+            <h3>บันทึกการยืม (BRW-)</h3>
+            <span id="brwToggleIcon" style="color:var(--text-400); font-size:12px;">▸ ขยาย</span>
+          </div>
+          <div id="brwFormBody" style="display:none;">
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="field full">
+                  <label>เลือกอุปกรณ์</label>
+                  <select class="filter-select" style="width:100%" id="brwPageAsset"></select>
+                </div>
+                <div class="field">
+                  <label>ผู้ยืม</label>
+                  <input type="text" class="filter-select" style="width:100%" id="brwPageBorrower" list="brwBorrowerList" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label>กำหนดคืนวันที่</label>
+                  <input type="date" id="brwPageDueDate" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+                </div>
+                <div class="field full">
+                  <label>หมายเหตุ</label>
+                  <textarea id="brwPageRemarks" rows="2" placeholder="เช่น ใช้ในภารกิจ / ยืมทดสอบ"></textarea>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="modal-footer" style="position:static;">
-            <button class="btn btn-steel" onclick="submitBorrowFromPage()">บันทึกการยืม</button>
+            <div class="modal-footer" style="position:static;">
+              <button class="btn btn-steel" onclick="submitBorrowFromPage()">บันทึกการยืม</button>
+            </div>
           </div>
         </div>
         <div class="card">
@@ -14196,8 +14201,7 @@ function openBorrowForm(id){
   document.getElementById('brwAssetCode').textContent = a.asset_code;
   document.getElementById('brwBorrower').value = '';
   document.getElementById('brwRemarks').value = '';
-  document.getElementById('brwBorrowerList').innerHTML = [...new Set(ASSETS.map(x=>x.holder).filter(h=>h && h!=='-' && h!=='(อยู่ในคลัง)'))]
-    .map(h=>`<option value="${h}"></option>`).join('');
+  fillDatalist('brwBorrowerList', borrowerDatalistValues());
   const due = new Date();
   due.setDate(due.getDate() + 7);
   document.getElementById('brwDueDate').value = due.toISOString().slice(0,10);
@@ -14214,6 +14218,21 @@ function doBorrowAsset(a, borrower, dueDate, remarks){
   const summary = 'ผู้ยืม: ' + borrower + ' · กำหนดคืน: ' + dueDate + (remarks ? ' · ' + remarks : '');
   a.history.push({title:'ยืมอุปกรณ์', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
   syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder});
+  rememberReceiveValue('borrower', borrower);
+}
+
+function toggleBorrowForm(){
+  const body = document.getElementById('brwFormBody');
+  const icon = document.getElementById('brwToggleIcon');
+  const show = body.style.display === 'none';
+  body.style.display = show ? 'block' : 'none';
+  icon.textContent = show ? '▾ ย่อ' : '▸ ขยาย';
+}
+
+function borrowerDatalistValues(){
+  const recent = loadRecentValues();
+  const current = ASSETS.map(x=>x.holder).filter(h=>h && h!=='-' && h!=='(อยู่ในคลัง)');
+  return [...new Set([...recent.borrower, ...current])];
 }
 
 function confirmBorrowAsset(){
@@ -14241,8 +14260,7 @@ function initBorrowForm(){
   assetSel.innerHTML = eligible.length
     ? eligible.map(a=>`<option value="${a.id}">${a.asset_code} — ${a.model} (${a.holder})</option>`).join('')
     : `<option value="">ไม่มีอุปกรณ์พร้อมให้ยืม</option>`;
-  document.getElementById('brwBorrowerList').innerHTML = [...new Set(ASSETS.map(x=>x.holder).filter(h=>h && h!=='-' && h!=='(อยู่ในคลัง)'))]
-    .map(h=>`<option value="${h}"></option>`).join('');
+  fillDatalist('brwBorrowerList', borrowerDatalistValues());
   if(!document.getElementById('brwPageDueDate').value){
     const due = new Date();
     due.setDate(due.getDate() + 7);
@@ -14353,7 +14371,7 @@ function renderTransferForm2Reset(){
 /* จำค่าที่เคยกรอกไว้ในเบราว์เซอร์ (localStorage) เพื่อ autofill ช่องชนิด/รุ่น/S-N/หน่วย — ยกเว้นเลขพัสดุ ทอ. */
 const RECENT_KEY = 'cams_recent_receive_values';
 function loadRecentValues(){
-  const defaults = {type:[], model:[], holder:[], location:[], serial:[]};
+  const defaults = {type:[], model:[], holder:[], location:[], serial:[], borrower:[]};
   try{ return Object.assign({}, defaults, JSON.parse(localStorage.getItem(RECENT_KEY)) || {}); }
   catch(e){ return defaults; }
 }

@@ -13243,7 +13243,7 @@ async function loadAssetsFromSheet(){
       location: r.location,
       acquired_date: r.acquired_date,
       remarks: r.remarks || '',
-      attachments: [],
+      attachments: (r.attachments || []).map(f => ({name: f.filename, data: f.url, isImage: true})),
       history: [
         {title:'ข้อมูลเริ่มต้นจาก Google Sheet', doc:'-', meta:'ซิงก์จาก CAMS Assets', date: r.acquired_date || '-'},
       ],
@@ -13290,6 +13290,33 @@ async function syncDeleteToSheet(assetCode){
     });
   }catch(e){
     showToast('ซิงก์ไป Google Sheet ไม่สำเร็จ: ' + e.message);
+  }
+}
+
+async function uploadImageToSheet(assetCode, filename, dataUrl){
+  try{
+    const base64 = dataUrl.split(',')[1];
+    const mimeMatch = dataUrl.match(/^data:([^;]+);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    await fetch(SHEET_API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'upload_image', asset_code: assetCode, filename: filename, mimeType: mimeType, data: base64 }),
+    });
+  }catch(e){
+    showToast('อัปโหลดภาพไป Google Drive ไม่สำเร็จ: ' + e.message);
+  }
+}
+
+async function syncDeleteImageFromSheet(assetCode, url){
+  try{
+    await fetch(SHEET_API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'delete_image', asset_code: assetCode, url: url }),
+    });
+  }catch(e){
+    showToast('ลบภาพจาก Google Drive ไม่สำเร็จ: ' + e.message);
   }
 }
 
@@ -13675,8 +13702,10 @@ function onFilesSelected(e){
     const reader = new FileReader();
     reader.onload = function(ev){
       a.attachments.push({name:file.name, data:ev.target.result, isImage:file.type.startsWith('image/')});
+      renderAttachments(a);
+      uploadImageToSheet(a.asset_code, file.name, ev.target.result);
       remaining--;
-      if(remaining===0){ renderAttachments(a); showToast('อัปโหลดไฟล์แนบสำเร็จ ' + files.length + ' ไฟล์'); }
+      if(remaining===0){ showToast('อัปโหลดไฟล์แนบสำเร็จ ' + files.length + ' ไฟล์'); }
     };
     reader.readAsDataURL(file);
   });
@@ -13685,8 +13714,10 @@ function onFilesSelected(e){
 
 function removeAttachment(idx){
   const a = ASSETS.find(x=>x.id===currentAssetId);
+  const removed = a.attachments[idx];
   a.attachments.splice(idx,1);
   renderAttachments(a);
+  if(removed && removed.data && removed.data.startsWith('http')) syncDeleteImageFromSheet(a.asset_code, removed.data);
 }
 
 function openLightbox(src){
@@ -13913,6 +13944,7 @@ function submitReceive(){
   };
   ASSETS.push(newAsset);
   syncAddToSheet(newAsset);
+  rcvAttachments.forEach(f => uploadImageToSheet(newAsset.asset_code, f.name, f.data));
   rememberReceiveValue('type', type);
   rememberReceiveValue('model', model);
   rememberReceiveValue('holder', holder);

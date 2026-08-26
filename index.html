@@ -193,6 +193,9 @@ table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
 .data-table tbody tr.row-overdue:hover{background:var(--amber-100); filter:brightness(.96);}
 .data-table tbody tr.row-selected{background:var(--green-100);}
 .data-table tbody tr.row-selected:hover{background:var(--green-100); filter:brightness(.96);}
+.brw-search-scroll{max-height:240px; overflow-y:auto; margin-bottom:10px; border:1px solid var(--border); border-radius:8px;}
+.brw-search-scroll table{margin:0;}
+.brw-search-scroll thead th{position:sticky; top:0; z-index:1;}
 .data-table tbody tr{cursor:pointer;}
 .reg-del-btn{
   border:none; background:none; color:#ff1a1a; font-size:16px; font-weight:800; cursor:pointer;
@@ -712,10 +715,12 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
                 <button class="clear-btn" onclick="clearBrwSearch()">✕</button>
               </div>
               <div class="result-count" id="brwResultCount"></div>
-              <table class="data-table" style="margin-bottom:10px;">
-                <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th></tr></thead>
-                <tbody id="brwSearchTbody"></tbody>
-              </table>
+              <div class="brw-search-scroll">
+                <table class="data-table">
+                  <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th></tr></thead>
+                  <tbody id="brwSearchTbody"></tbody>
+                </table>
+              </div>
               <div class="form-note" id="brwSelectedInfo" style="margin-bottom:14px;"></div>
               <div class="form-grid">
                 <div class="field">

@@ -13827,8 +13827,9 @@ function renderTransferForm2Reset(){
 /* จำค่าที่เคยกรอกไว้ในเบราว์เซอร์ (localStorage) เพื่อ autofill ช่องชนิด/รุ่น/S-N/หน่วย — ยกเว้นเลขพัสดุ ทอ. */
 const RECENT_KEY = 'cams_recent_receive_values';
 function loadRecentValues(){
-  try{ return JSON.parse(localStorage.getItem(RECENT_KEY)) || {type:[], model:[], holder:[], location:[], serial:[]}; }
-  catch(e){ return {type:[], model:[], holder:[], location:[], serial:[]}; }
+  const defaults = {type:[], model:[], holder:[], location:[], serial:[]};
+  try{ return Object.assign({}, defaults, JSON.parse(localStorage.getItem(RECENT_KEY)) || {}); }
+  catch(e){ return defaults; }
 }
 function rememberReceiveValue(field, value){
   if(!value) return;

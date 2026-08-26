@@ -696,6 +696,32 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
       <div class="view" id="view-custody"></div>
       <!-- ===== Borrow-Return (ยืม-คืน) ===== -->
       <div class="view" id="view-borrow">
+        <div class="card" style="max-width:720px; margin-bottom:16px;">
+          <div class="card-header"><h3>บันทึกการยืม (BRW-)</h3></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="field full">
+                <label>เลือกอุปกรณ์</label>
+                <select class="filter-select" style="width:100%" id="brwPageAsset"></select>
+              </div>
+              <div class="field">
+                <label>ผู้ยืม</label>
+                <input type="text" class="filter-select" style="width:100%" id="brwPageBorrower" list="brwBorrowerList" autocomplete="off">
+              </div>
+              <div class="field">
+                <label>กำหนดคืนวันที่</label>
+                <input type="date" id="brwPageDueDate" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+              </div>
+              <div class="field full">
+                <label>หมายเหตุ</label>
+                <textarea id="brwPageRemarks" rows="2" placeholder="เช่น ใช้ในภารกิจ / ยืมทดสอบ"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer" style="position:static;">
+            <button class="btn btn-steel" onclick="submitBorrowFromPage()">บันทึกการยืม</button>
+          </div>
+        </div>
         <div class="card">
           <div class="card-header"><h3>รายการที่ถูกยืมอยู่ (BRW-)</h3></div>
           <div class="card-body" style="padding:0;">
@@ -13620,7 +13646,7 @@ function goView(view){
   if(view==='receive') initReceiveForm();
   if(view==='transfer') renderTransferForm();
   if(view==='disposal'){ initBackdatedDisposalForm(); renderDisposalList(); }
-  if(view==='borrow') renderBorrowList();
+  if(view==='borrow'){ initBorrowForm(); renderBorrowList(); }
   if(PLACEHOLDER_INFO[view]) renderPlaceholder(view);
 }
 
@@ -14178,6 +14204,18 @@ function openBorrowForm(id){
   openModal('borrowFormModal');
 }
 
+function doBorrowAsset(a, borrower, dueDate, remarks){
+  a._prevHolder = a.holder;
+  a._prevStatus = a.status;
+  a._borrow = {borrower, dueDate, remarks};
+  a.holder = borrower;
+  a.status = 'BORROWED';
+
+  const summary = 'ผู้ยืม: ' + borrower + ' · กำหนดคืน: ' + dueDate + (remarks ? ' · ' + remarks : '');
+  a.history.push({title:'ยืมอุปกรณ์', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
+  syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder});
+}
+
 function confirmBorrowAsset(){
   const a = ASSETS.find(x=>x.id===brwTargetId);
   if(!a) return;
@@ -14188,21 +14226,51 @@ function confirmBorrowAsset(){
   if(!borrower){ showToast('กรุณาระบุผู้ยืม'); return; }
   if(!dueDate){ showToast('กรุณาระบุกำหนดคืนวันที่'); return; }
 
-  a._prevHolder = a.holder;
-  a._prevStatus = a.status;
-  a._borrow = {borrower, dueDate, remarks};
-  a.holder = borrower;
-  a.status = 'BORROWED';
-
-  const summary = 'ผู้ยืม: ' + borrower + ' · กำหนดคืน: ' + dueDate + (remarks ? ' · ' + remarks : '');
-  a.history.push({title:'ยืมอุปกรณ์', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
-  syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder});
+  doBorrowAsset(a, borrower, dueDate, remarks);
 
   closeModal('borrowFormModal');
   closeModal('assetModalBackdrop');
   showToast('บันทึกการยืม ' + a.asset_code + ' โดย ' + borrower + ' แล้ว');
   renderRegistry(false);
-  if(document.getElementById('view-borrow').classList.contains('active')) renderBorrowList();
+  if(document.getElementById('view-borrow').classList.contains('active')){ initBorrowForm(); renderBorrowList(); }
+}
+
+function initBorrowForm(){
+  const assetSel = document.getElementById('brwPageAsset');
+  const eligible = ASSETS.filter(a=>a.status==='ASSIGNED'||a.status==='IN_STOCK');
+  assetSel.innerHTML = eligible.length
+    ? eligible.map(a=>`<option value="${a.id}">${a.asset_code} — ${a.model} (${a.holder})</option>`).join('')
+    : `<option value="">ไม่มีอุปกรณ์พร้อมให้ยืม</option>`;
+  document.getElementById('brwBorrowerList').innerHTML = [...new Set(ASSETS.map(x=>x.holder).filter(h=>h && h!=='-' && h!=='(อยู่ในคลัง)'))]
+    .map(h=>`<option value="${h}"></option>`).join('');
+  if(!document.getElementById('brwPageDueDate').value){
+    const due = new Date();
+    due.setDate(due.getDate() + 7);
+    document.getElementById('brwPageDueDate').value = due.toISOString().slice(0,10);
+  }
+}
+
+function submitBorrowFromPage(){
+  const id = Number(document.getElementById('brwPageAsset').value);
+  const borrower = document.getElementById('brwPageBorrower').value.trim();
+  const dueDate = document.getElementById('brwPageDueDate').value;
+  const remarks = document.getElementById('brwPageRemarks').value.trim();
+
+  if(!id){ showToast('กรุณาเลือกอุปกรณ์'); return; }
+  if(!borrower){ showToast('กรุณาระบุผู้ยืม'); return; }
+  if(!dueDate){ showToast('กรุณาระบุกำหนดคืนวันที่'); return; }
+
+  const a = ASSETS.find(x=>x.id===id);
+  if(!a) return;
+
+  doBorrowAsset(a, borrower, dueDate, remarks);
+
+  document.getElementById('brwPageBorrower').value = '';
+  document.getElementById('brwPageRemarks').value = '';
+  showToast('บันทึกการยืม ' + a.asset_code + ' โดย ' + borrower + ' แล้ว');
+  initBorrowForm();
+  renderBorrowList();
+  if(document.getElementById('view-registry').classList.contains('active')) renderRegistry(false);
 }
 
 function renderBorrowList(){
@@ -14237,6 +14305,7 @@ function returnBorrow(id){
     delete a._borrow;
     delete a._prevHolder;
     delete a._prevStatus;
+    initBorrowForm();
     renderBorrowList();
     renderRegistry(false);
     showToast('รับคืนอุปกรณ์ ' + a.asset_code + ' แล้ว');

@@ -193,6 +193,11 @@ table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
   width:26px; height:26px; border-radius:6px; line-height:1;
 }
 .reg-del-btn:hover{background:var(--red-100);}
+.reg-dispose-btn{
+  border:1px solid var(--red-500); background:none; color:var(--red-500); font-size:11.5px; font-weight:600; cursor:pointer;
+  padding:4px 8px; border-radius:6px; line-height:1; margin-right:6px;
+}
+.reg-dispose-btn:hover{background:var(--red-100);}
 
 /* ---------- Tags ---------- */
 .tag{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;}
@@ -13634,7 +13639,10 @@ function renderRegistry(resetFilters){
       <td class="code">${a.asset_code}</td><td>${a.type}</td><td>${a.model}</td><td class="code">${a.serial_number}</td>
       <td>${a.holder}</td><td>${a.unit}</td>
       <td><span class="tag ${STATUS_META[a.status].cls}">${STATUS_META[a.status].label}</span></td>
-      <td><button class="reg-del-btn" onclick="event.stopPropagation(); deleteAsset(${a.id})" title="ลบรายการ">✕</button></td>
+      <td>
+        ${(a.status==='DISPOSAL'||a.status==='DISPOSED') ? '' : `<button class="reg-dispose-btn" onclick="event.stopPropagation(); sendToDisposal(${a.id})">จำหน่าย</button>`}
+        <button class="reg-del-btn" onclick="event.stopPropagation(); deleteAsset(${a.id})" title="ลบรายการ">✕</button>
+      </td>
     </tr>
   `).join('') || `<tr><td colspan="8" style="text-align:center; color:var(--text-400); padding:24px;">ไม่พบรายการที่ตรงกับเงื่อนไข</td></tr>`;
 }
@@ -13762,8 +13770,8 @@ function closeLightbox(){
 }
 
 /* ---------- Disposal workflow ---------- */
-function sendToDisposal(){
-  const a = ASSETS.find(x=>x.id===currentAssetId);
+function sendToDisposal(id){
+  const a = ASSETS.find(x=>x.id===(id || currentAssetId));
   showConfirm(`ยืนยันส่งจำหน่ายอุปกรณ์ <b>${a.asset_code}</b> ใช่หรือไม่? รายการจะย้ายไปยังหน้า "จำหน่าย" เพื่อรออนุมัติ`, function(){
     a._prevStatus = a.status;
     a.status = 'DISPOSAL';

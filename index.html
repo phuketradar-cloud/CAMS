@@ -191,6 +191,8 @@ table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
 .data-table tbody tr.row-returned:hover{background:var(--red-100); filter:brightness(.96);}
 .data-table tbody tr.row-overdue{background:var(--amber-100);}
 .data-table tbody tr.row-overdue:hover{background:var(--amber-100); filter:brightness(.96);}
+.data-table tbody tr.row-selected{background:var(--green-100);}
+.data-table tbody tr.row-selected:hover{background:var(--green-100); filter:brightness(.96);}
 .data-table tbody tr{cursor:pointer;}
 .reg-del-btn{
   border:none; background:none; color:#ff1a1a; font-size:16px; font-weight:800; cursor:pointer;
@@ -703,11 +705,19 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
           </div>
           <div id="brwFormBody" style="display:none;">
             <div class="card-body">
+              <label style="display:block; font-size:12.5px; color:var(--text-600); margin-bottom:6px; font-weight:500;">ค้นหาอุปกรณ์ที่จะให้ยืม</label>
+              <div class="search-box" id="brwSearchBox" style="margin-bottom:8px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="brwSearch" placeholder="ค้นหา: เลขพัสดุ ทอ. / S/N / รุ่น/แบบ" oninput="onBrwSearch()">
+                <button class="clear-btn" onclick="clearBrwSearch()">✕</button>
+              </div>
+              <div class="result-count" id="brwResultCount"></div>
+              <table class="data-table" style="margin-bottom:10px;">
+                <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th></tr></thead>
+                <tbody id="brwSearchTbody"></tbody>
+              </table>
+              <div class="form-note" id="brwSelectedInfo" style="margin-bottom:14px;"></div>
               <div class="form-grid">
-                <div class="field full">
-                  <label>เลือกอุปกรณ์</label>
-                  <select class="filter-select" style="width:100%" id="brwPageAsset"></select>
-                </div>
                 <div class="field">
                   <label>ผู้ยืม</label>
                   <input type="text" class="filter-select" style="width:100%" id="brwPageBorrower" list="brwBorrowerList" autocomplete="off">
@@ -14254,12 +14264,17 @@ function confirmBorrowAsset(){
   if(document.getElementById('view-borrow').classList.contains('active')){ initBorrowForm(); renderBorrowList(); }
 }
 
+let brwSelectedId = null;
+
+function brwEligibleAssets(){
+  return ASSETS.filter(a=>a.status==='ASSIGNED'||a.status==='IN_STOCK');
+}
+
 function initBorrowForm(){
-  const assetSel = document.getElementById('brwPageAsset');
-  const eligible = ASSETS.filter(a=>a.status==='ASSIGNED'||a.status==='IN_STOCK');
-  assetSel.innerHTML = eligible.length
-    ? eligible.map(a=>`<option value="${a.id}">${a.asset_code} — ${a.model} (${a.holder})</option>`).join('')
-    : `<option value="">ไม่มีอุปกรณ์พร้อมให้ยืม</option>`;
+  brwSelectedId = null;
+  document.getElementById('brwSearch').value = '';
+  renderBrwSearchResults();
+  updateBrwSelectedInfo();
   fillDatalist('brwBorrowerList', borrowerDatalistValues());
   if(!document.getElementById('brwPageDueDate').value){
     const due = new Date();
@@ -14268,17 +14283,46 @@ function initBorrowForm(){
   }
 }
 
+function onBrwSearch(){ renderBrwSearchResults(); }
+function clearBrwSearch(){ document.getElementById('brwSearch').value = ''; renderBrwSearchResults(); }
+
+function renderBrwSearchResults(){
+  const q = document.getElementById('brwSearch').value.trim().toLowerCase();
+  const eligible = brwEligibleAssets();
+  const filtered = q ? eligible.filter(a=>(a.asset_code+' '+a.serial_number+' '+a.model+' '+a.holder).toLowerCase().includes(q)) : eligible;
+  document.getElementById('brwResultCount').textContent = `พบ ${filtered.length} จาก ${eligible.length} รายการที่พร้อมให้ยืม`;
+  document.getElementById('brwSearchTbody').innerHTML = filtered.length
+    ? filtered.map(a=>`
+      <tr class="${a.id===brwSelectedId ? 'row-selected' : ''}" onclick="selectBrwAsset(${a.id})">
+        <td class="code">${a.asset_code}</td><td>${a.type}</td><td>${a.model}</td><td class="code">${a.serial_number}</td><td>${a.holder}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="5" style="text-align:center; color:var(--text-400); padding:14px;">ไม่พบอุปกรณ์ที่พร้อมให้ยืม</td></tr>`;
+}
+
+function selectBrwAsset(id){
+  brwSelectedId = id;
+  renderBrwSearchResults();
+  updateBrwSelectedInfo();
+}
+
+function updateBrwSelectedInfo(){
+  const el = document.getElementById('brwSelectedInfo');
+  const a = ASSETS.find(x=>x.id===brwSelectedId);
+  el.innerHTML = a
+    ? `เลือกแล้ว: <b>${a.asset_code}</b> — ${a.type} ${a.model} · S/N <span class="code">${a.serial_number}</span> · ผู้ครอบครองปัจจุบัน ${a.holder}`
+    : 'คลิกแถวในตารางด้านบนเพื่อเลือกอุปกรณ์ที่จะให้ยืม';
+}
+
 function submitBorrowFromPage(){
-  const id = Number(document.getElementById('brwPageAsset').value);
   const borrower = document.getElementById('brwPageBorrower').value.trim();
   const dueDate = document.getElementById('brwPageDueDate').value;
   const remarks = document.getElementById('brwPageRemarks').value.trim();
 
-  if(!id){ showToast('กรุณาเลือกอุปกรณ์'); return; }
+  if(!brwSelectedId){ showToast('กรุณาเลือกอุปกรณ์จากตารางค้นหา'); return; }
   if(!borrower){ showToast('กรุณาระบุผู้ยืม'); return; }
   if(!dueDate){ showToast('กรุณาระบุกำหนดคืนวันที่'); return; }
 
-  const a = ASSETS.find(x=>x.id===id);
+  const a = ASSETS.find(x=>x.id===brwSelectedId);
   if(!a) return;
 
   doBorrowAsset(a, borrower, dueDate, remarks);

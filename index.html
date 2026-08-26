@@ -504,7 +504,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
             </div>
             <div class="result-count" id="regResultCount"></div>
             <table class="data-table">
-              <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th><th>หน่วย</th><th>สถานะ</th><th></th></tr></thead>
+              <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th><th>สถานที่</th><th>สถานะ</th><th></th></tr></thead>
               <tbody id="registryTbody"></tbody>
             </table>
           </div>
@@ -584,7 +584,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
           <div class="card-header"><h3>รายการเสนอส่งคืน (DSP-)</h3></div>
           <div class="card-body" style="padding:0;">
             <table class="data-table">
-              <thead><tr><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>สถานะก่อนเสนอส่งคืน</th><th>หน่วย</th><th style="width:220px;">ดำเนินการ</th></tr></thead>
+              <thead><tr><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>สถานะก่อนเสนอส่งคืน</th><th>สถานที่</th><th style="width:220px;">ดำเนินการ</th></tr></thead>
               <tbody id="disposalTbody"></tbody>
             </table>
             <div id="disposalEmpty" class="placeholder-box" style="display:none;">
@@ -13769,7 +13769,7 @@ function renderRegistry(resetFilters){
   document.getElementById('registryTbody').innerHTML = filtered.map(a=>`
     <tr class="${a.status==='DISPOSED' ? 'row-returned' : ''}" onclick="openAssetModal(${a.id})">
       <td class="code">${a.asset_code}</td><td>${a.type}</td><td>${a.model}</td><td class="code">${a.serial_number}</td>
-      <td>${a.holder}</td><td>${a.unit}</td>
+      <td>${a.holder}</td><td>${a.location}</td>
       <td><span class="tag ${STATUS_META[a.status].cls}">${STATUS_META[a.status].label}</span></td>
       <td>
         <div class="reg-actions">
@@ -14073,7 +14073,7 @@ function renderDisposalList(){
     <tr>
       <td class="code">${a.asset_code}</td><td>${a.model}</td>
       <td><span class="tag ${STATUS_META[a._prevStatus].cls}">${STATUS_META[a._prevStatus].label}</span></td>
-      <td>${a.unit}</td>
+      <td>${a.location}</td>
       <td>
         <button class="btn btn-outline btn-sm" onclick="undoDisposal(${a.id})">← ย้อนกลับ</button>
         <button class="btn btn-danger btn-sm" onclick="finalizeDisposal(${a.id})">ยืนยันส่งคืนถาวร</button>

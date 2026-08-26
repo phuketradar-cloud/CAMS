@@ -430,7 +430,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
       <div class="nav-item" data-view="borrow" onclick="goView('borrow')"><span class="ic">⇌</span> ยืม-คืน</div>
       <div class="nav-item" data-view="repair" onclick="goView('repair')"><span class="ic">⚙</span> ซ่อม</div>
       <div class="nav-item" data-view="inspection" onclick="goView('inspection')"><span class="ic">✓</span> ตรวจสอบ</div>
-      <div class="nav-item" data-view="disposal" onclick="goView('disposal')"><span class="ic">✕</span> จำหน่าย</div>
+      <div class="nav-item" data-view="disposal" onclick="goView('disposal')"><span class="ic">✕</span> ส่งคืน</div>
     </div>
 
     <div class="nav-group">
@@ -537,12 +537,12 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
       <div class="view" id="view-disposal">
         <div class="card" style="max-width:720px; margin-bottom:16px;">
           <div class="card-header" style="cursor:pointer;" onclick="toggleBackdatedForm()">
-            <h3>บันทึกจำหน่ายย้อนหลัง (DSP-)</h3>
+            <h3>บันทึกส่งคืนย้อนหลัง (DSP-)</h3>
             <span id="bdToggleIcon" style="color:var(--text-400); font-size:12px;">▸ ขยาย</span>
           </div>
           <div id="bdFormBody" style="display:none;">
             <div class="card-body">
-              <div class="form-note" style="margin-bottom:12px;">สำหรับบันทึกอุปกรณ์ที่จำหน่ายไปแล้วในอดีต — ถ้าเลขพัสดุ ทอ. มีอยู่ในทะเบียนแล้ว ระบบจะปรับสถานะเป็น "จำหน่ายแล้ว" ให้ทันที ถ้าไม่มีจะสร้างรายการใหม่ในสถานะจำหน่ายแล้วเลย</div>
+              <div class="form-note" style="margin-bottom:12px;">สำหรับบันทึกอุปกรณ์ที่ส่งคืนไปแล้วในอดีต — ถ้าเลขพัสดุ ทอ. มีอยู่ในทะเบียนแล้ว ระบบจะปรับสถานะเป็น "ส่งคืนแล้ว" ให้ทันที ถ้าไม่มีจะสร้างรายการใหม่ในสถานะส่งคืนแล้วเลย</div>
               <div class="form-grid">
                 <div class="field">
                   <label>เลขพัสดุ ทอ.</label>
@@ -550,7 +550,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
                   <datalist id="bdCodeList"></datalist>
                 </div>
                 <div class="field">
-                  <label>วันที่จำหน่าย</label>
+                  <label>วันที่ส่งคืน</label>
                   <input type="date" id="bdDate" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
                 </div>
                 <div class="field">
@@ -562,26 +562,26 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
                   <input type="text" class="filter-select" style="width:100%" id="bdModel" list="rcvModelList" autocomplete="off">
                 </div>
                 <div class="field full">
-                  <label>เหตุผล/หมายเหตุการจำหน่าย</label>
-                  <textarea id="bdRemarks" rows="2" placeholder="เช่น ชำรุดเกินซ่อม / หมดอายุการใช้งาน / เลขที่คำสั่งจำหน่าย"></textarea>
+                  <label>เหตุผล/หมายเหตุการส่งคืน</label>
+                  <textarea id="bdRemarks" rows="2" placeholder="เช่น ชำรุดเกินซ่อม / หมดอายุการใช้งาน / เลขที่คำสั่งส่งคืน"></textarea>
                 </div>
               </div>
             </div>
             <div class="modal-footer" style="position:static;">
-              <button class="btn btn-danger" onclick="submitBackdatedDisposal()">บันทึกจำหน่ายย้อนหลัง</button>
+              <button class="btn btn-danger" onclick="submitBackdatedDisposal()">บันทึกส่งคืนย้อนหลัง</button>
             </div>
           </div>
         </div>
         <div class="card">
-          <div class="card-header"><h3>รายการเสนอจำหน่าย (DSP-)</h3></div>
+          <div class="card-header"><h3>รายการเสนอส่งคืน (DSP-)</h3></div>
           <div class="card-body" style="padding:0;">
             <table class="data-table">
-              <thead><tr><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>สถานะก่อนเสนอจำหน่าย</th><th>หน่วย</th><th style="width:220px;">ดำเนินการ</th></tr></thead>
+              <thead><tr><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>สถานะก่อนเสนอส่งคืน</th><th>หน่วย</th><th style="width:220px;">ดำเนินการ</th></tr></thead>
               <tbody id="disposalTbody"></tbody>
             </table>
             <div id="disposalEmpty" class="placeholder-box" style="display:none;">
-              <div class="ic">✕</div><h3>ไม่มีรายการเสนอจำหน่าย</h3>
-              <p>เมื่อกด "ส่งจำหน่ายอุปกรณ์" จากหน้ารายละเอียดอุปกรณ์ รายการจะมาปรากฏที่นี่</p>
+              <div class="ic">✕</div><h3>ไม่มีรายการเสนอส่งคืน</h3>
+              <p>เมื่อกด "ส่งคืนอุปกรณ์" จากหน้ารายละเอียดอุปกรณ์ รายการจะมาปรากฏที่นี่</p>
             </div>
           </div>
         </div>
@@ -722,7 +722,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-danger" id="amDisposalBtn" onclick="sendToDisposal()">ส่งจำหน่ายอุปกรณ์</button>
+      <button class="btn btn-danger" id="amDisposalBtn" onclick="sendToDisposal()">ส่งคืนอุปกรณ์</button>
       <button class="btn btn-outline" onclick="printAssetLabel(currentAssetId)">พิมพ์ป้าย QR</button>
       <button class="btn btn-outline" onclick="closeModal('assetModalBackdrop')">ปิด</button>
     </div>
@@ -769,6 +769,42 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="printCurrentReceiptQr()">พิมพ์ป้าย QR</button>
       <button class="btn btn-primary" onclick="closeModal('receiveResultModal')">เสร็จสิ้น</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Return Asset Form Modal (ส่งคืนอุปกรณ์) ============ -->
+<div class="modal-backdrop" id="returnFormModal">
+  <div class="modal w-md">
+    <div class="modal-header">
+      <h3>ส่งคืนอุปกรณ์ — <span id="retAssetCode" class="code"></span></h3>
+      <button class="x" onclick="closeModal('returnFormModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field full">
+          <label>สาเหตุส่งคืน</label>
+          <textarea id="retReason" rows="2" placeholder="เช่น ชำรุด / หมดความจำเป็นใช้งาน / เปลี่ยนอุปกรณ์ใหม่"></textarea>
+        </div>
+        <div class="field">
+          <label>วันเวลาส่งคืน</label>
+          <input type="datetime-local" id="retDatetime" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+        </div>
+        <div class="field">
+          <label>ผู้รับคืน</label>
+          <input type="text" class="filter-select" style="width:100%" id="retRecipient" list="retRecipientList" autocomplete="off">
+          <datalist id="retRecipientList"></datalist>
+        </div>
+        <div class="field full">
+          <label>ไฟล์ภาพแนบ (สูงสุด 10 ภาพ)</label>
+          <div class="attach-grid" id="retAttachGrid"></div>
+          <input type="file" id="retFileInput" accept="image/*" multiple style="display:none" onchange="onRetFilesSelected(event)">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('returnFormModal')">ยกเลิก</button>
+      <button class="btn btn-danger" onclick="confirmReturnAsset()">ยืนยันส่งคืน</button>
     </div>
   </div>
 </div>
@@ -13216,8 +13252,8 @@ const STATUS_META = {
   DAMAGED:    {label:'ชำรุด',               cls:'tag-DAMAGED'},
   LOST:       {label:'สูญหาย',              cls:'tag-LOST'},
   INSPECTION: {label:'อยู่ระหว่างตรวจสอบ',   cls:'tag-INSPECTION'},
-  DISPOSAL:   {label:'เสนอจำหน่าย',          cls:'tag-DISPOSAL'},
-  DISPOSED:   {label:'จำหน่ายแล้ว',          cls:'tag-DISPOSED'},
+  DISPOSAL:   {label:'เสนอส่งคืน',          cls:'tag-DISPOSAL'},
+  DISPOSED:   {label:'ส่งคืนแล้ว',          cls:'tag-DISPOSED'},
 };
 
 const UNITS = ['ผลก.ทอ.', 'บน.1', 'บน.2', 'บน.4', 'บน.7', 'ศคพ.'];
@@ -13414,7 +13450,7 @@ function applyRoleView(){
 const VIEW_TITLES = {
   dashboard:'แดชบอร์ด', registry:'ทะเบียนอุปกรณ์', scan:'สแกน QR', receive:'รับเข้า', issue:'เบิกจ่าย',
   custody:'ครอบครอง', transfer:'โอนอุปกรณ์', borrow:'ยืม-คืน', repair:'ซ่อม',
-  inspection:'ตรวจสอบ', disposal:'จำหน่าย', reports:'รายงาน', admin:'ผู้ดูแลระบบ'
+  inspection:'ตรวจสอบ', disposal:'ส่งคืน', reports:'รายงาน', admin:'ผู้ดูแลระบบ'
 };
 const PLACEHOLDER_INFO = {
   issue:     {ic:'↥', flow:'คลัง (IN_STOCK) → เบิกจ่าย → ครอบครอง (ASSIGNED) → ISS-YYYY-#####', desc:'จ่ายอุปกรณ์จากคลังให้บุคคล/หน่วยรับผิดชอบ พร้อมผูกผู้ครอบครองและหน่วยงาน'},
@@ -13640,7 +13676,7 @@ function renderRegistry(resetFilters){
       <td>${a.holder}</td><td>${a.unit}</td>
       <td><span class="tag ${STATUS_META[a.status].cls}">${STATUS_META[a.status].label}</span></td>
       <td>
-        ${(a.status==='DISPOSAL'||a.status==='DISPOSED') ? '' : `<button class="reg-dispose-btn" onclick="event.stopPropagation(); sendToDisposal(${a.id})">จำหน่าย</button>`}
+        ${(a.status==='DISPOSAL'||a.status==='DISPOSED') ? '' : `<button class="reg-dispose-btn" onclick="event.stopPropagation(); sendToDisposal(${a.id})">ส่งคืน</button>`}
         <button class="reg-del-btn" onclick="event.stopPropagation(); deleteAsset(${a.id})" title="ลบรายการ">✕</button>
       </td>
     </tr>
@@ -13770,18 +13806,93 @@ function closeLightbox(){
 }
 
 /* ---------- Disposal workflow ---------- */
+let retTargetId = null;
+let retAttachments = [];
+const RET_ATTACH_MAX = 10;
+
 function sendToDisposal(id){
-  const a = ASSETS.find(x=>x.id===(id || currentAssetId));
-  showConfirm(`ยืนยันส่งจำหน่ายอุปกรณ์ <b>${a.asset_code}</b> ใช่หรือไม่? รายการจะย้ายไปยังหน้า "จำหน่าย" เพื่อรออนุมัติ`, function(){
-    a._prevStatus = a.status;
-    a.status = 'DISPOSAL';
-    syncUpdateToSheet(a.asset_code, {status: a.status});
-    a.history.push({title:'เสนอจำหน่าย', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
-    closeModal('assetModalBackdrop');
-    showToast('ส่งจำหน่ายอุปกรณ์ ' + a.asset_code + ' แล้ว รออนุมัติที่หน้า "จำหน่าย"');
-    renderRegistry(false);
-    if(document.getElementById('view-disposal').classList.contains('active')) renderDisposalList();
-  }, {title:'ส่งจำหน่ายอุปกรณ์', okLabel:'ยืนยันส่งจำหน่าย', danger:true});
+  retTargetId = id || currentAssetId;
+  const a = ASSETS.find(x=>x.id===retTargetId);
+  if(!a) return;
+  document.getElementById('retAssetCode').textContent = a.asset_code;
+  document.getElementById('retReason').value = '';
+  document.getElementById('retRecipient').value = '';
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('retDatetime').value = now.toISOString().slice(0,16);
+  document.getElementById('retRecipientList').innerHTML = [...new Set(ASSETS.map(x=>x.holder).filter(h=>h && h!=='(อยู่ในคลัง)'))]
+    .map(h=>`<option value="${h}"></option>`).join('');
+  retAttachments = [];
+  renderRetAttachments();
+  openModal('returnFormModal');
+}
+
+function renderRetAttachments(){
+  const grid = document.getElementById('retAttachGrid');
+  let html = retAttachments.map((f, idx) => `
+    <div class="attach-tile" onclick="openLightbox('${f.data}')">
+      <img src="${f.data}" alt="${f.name}">
+      <button class="rm" onclick="event.stopPropagation(); removeRetAttachment(${idx})">✕</button>
+      <div class="caption">${f.name}</div>
+    </div>`).join('');
+  if(retAttachments.length < RET_ATTACH_MAX){
+    html += `<div class="attach-drop" onclick="document.getElementById('retFileInput').click()"><div style="font-size:22px;">+</div>เพิ่มภาพ (${retAttachments.length}/${RET_ATTACH_MAX})</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function onRetFilesSelected(e){
+  const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+  const remaining = RET_ATTACH_MAX - retAttachments.length;
+  if(files.length > remaining) showToast('แนบได้สูงสุด ' + RET_ATTACH_MAX + ' ภาพ — เลือกได้อีก ' + remaining + ' ภาพ');
+  const toAdd = files.slice(0, remaining);
+  let pending = toAdd.length;
+  if(pending === 0){ e.target.value = ''; return; }
+  toAdd.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      retAttachments.push({name: file.name, data: ev.target.result, isImage: true});
+      pending--;
+      if(pending === 0) renderRetAttachments();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function removeRetAttachment(idx){
+  retAttachments.splice(idx, 1);
+  renderRetAttachments();
+}
+
+function confirmReturnAsset(){
+  const a = ASSETS.find(x=>x.id===retTargetId);
+  if(!a) return;
+  const reason = document.getElementById('retReason').value.trim();
+  const datetimeVal = document.getElementById('retDatetime').value;
+  const recipient = document.getElementById('retRecipient').value.trim();
+
+  if(!reason){ showToast('กรุณาระบุสาเหตุส่งคืน'); return; }
+  if(!datetimeVal){ showToast('กรุณาระบุวันเวลาส่งคืน'); return; }
+  if(!recipient){ showToast('กรุณาระบุผู้รับคืน'); return; }
+
+  const dateLabel = datetimeVal.replace('T', ' ');
+  const summary = 'สาเหตุ: ' + reason + ' · ผู้รับคืน: ' + recipient + ' · เวลา: ' + dateLabel;
+
+  a._prevStatus = a.status;
+  a.status = 'DISPOSAL';
+  a.remarks = a.remarks ? (a.remarks + ' — ' + summary) : summary;
+  a.attachments = a.attachments.concat(retAttachments);
+  a.history.push({title:'เสนอส่งคืน', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta: summary, date: dateLabel});
+
+  syncUpdateToSheet(a.asset_code, {status: a.status, remarks: a.remarks});
+  retAttachments.forEach(f => uploadImageToSheet(a.asset_code, f.name, f.data));
+
+  closeModal('returnFormModal');
+  closeModal('assetModalBackdrop');
+  showToast('ส่งคืนอุปกรณ์ ' + a.asset_code + ' แล้ว รออนุมัติที่หน้า "ส่งคืน"');
+  renderRegistry(false);
+  if(document.getElementById('view-disposal').classList.contains('active')) renderDisposalList();
 }
 
 function toggleBackdatedForm(){
@@ -13805,20 +13916,20 @@ function submitBackdatedDisposal(){
   const remarks = document.getElementById('bdRemarks').value.trim();
 
   if(!code){ showToast('กรุณาระบุเลขพัสดุ ทอ.'); return; }
-  if(!date){ showToast('กรุณาระบุวันที่จำหน่าย'); return; }
+  if(!date){ showToast('กรุณาระบุวันที่ส่งคืน'); return; }
 
   const existing = ASSETS.find(a=>a.asset_code===code);
   if(!existing && (!type || !model)){ showToast('เลขพัสดุนี้ไม่มีในทะเบียน กรุณาระบุชนิดและรุ่น/แบบด้วย'); return; }
 
-  showConfirm(`ยืนยันบันทึกจำหน่าย <b>${code}</b> ย้อนหลัง วันที่ ${date} ใช่หรือไม่? <br><b style="color:var(--red-500)">สถานะจะเป็น "จำหน่ายแล้ว" ทันที ย้อนกลับไม่ได้</b>`, function(){
+  showConfirm(`ยืนยันบันทึกส่งคืน <b>${code}</b> ย้อนหลัง วันที่ ${date} ใช่หรือไม่? <br><b style="color:var(--red-500)">สถานะจะเป็น "ส่งคืนแล้ว" ทันที ย้อนกลับไม่ได้</b>`, function(){
     const doc = 'DSP-2569-'+pad(LOG_SEQ++,5);
     if(existing){
       existing.status = 'DISPOSED';
       existing._prevStatus = null;
       existing.remarks = remarks ? (existing.remarks ? existing.remarks + ' — ' : '') + remarks : existing.remarks;
-      existing.history.push({title:'จำหน่ายย้อนหลัง', doc: doc, meta:'โดย ' + CURRENT_ROLE + (remarks ? ' — ' + remarks : ''), date: date});
+      existing.history.push({title:'ส่งคืนย้อนหลัง', doc: doc, meta:'โดย ' + CURRENT_ROLE + (remarks ? ' — ' + remarks : ''), date: date});
       syncUpdateToSheet(existing.asset_code, {status:'DISPOSED', remarks: existing.remarks});
-      showToast('บันทึกจำหน่ายย้อนหลัง ' + code + ' สำเร็จ');
+      showToast('บันทึกส่งคืนย้อนหลัง ' + code + ' สำเร็จ');
     } else {
       const newAsset = {
         id: Math.max(0, ...ASSETS.map(a=>a.id)) + 1,
@@ -13836,12 +13947,12 @@ function submitBackdatedDisposal(){
         remarks: remarks,
         attachments: [],
         history: [
-          {title:'จำหน่ายย้อนหลัง (บันทึกใหม่)', doc: doc, meta:'โดย ' + CURRENT_ROLE + (remarks ? ' — ' + remarks : ''), date: date},
+          {title:'ส่งคืนย้อนหลัง (บันทึกใหม่)', doc: doc, meta:'โดย ' + CURRENT_ROLE + (remarks ? ' — ' + remarks : ''), date: date},
         ],
       };
       ASSETS.push(newAsset);
       syncAddToSheet(newAsset);
-      showToast('บันทึกจำหน่ายย้อนหลัง ' + code + ' (รายการใหม่) สำเร็จ');
+      showToast('บันทึกส่งคืนย้อนหลัง ' + code + ' (รายการใหม่) สำเร็จ');
     }
     document.getElementById('bdCode').value = '';
     document.getElementById('bdType').value = '';
@@ -13850,7 +13961,7 @@ function submitBackdatedDisposal(){
     initBackdatedDisposalForm();
     renderDisposalList();
     if(document.getElementById('view-registry').classList.contains('active')) renderRegistry(false);
-  }, {title:'บันทึกจำหน่ายย้อนหลัง', okLabel:'ยืนยันบันทึก', danger:true});
+  }, {title:'บันทึกส่งคืนย้อนหลัง', okLabel:'ยืนยันบันทึก', danger:true});
 }
 
 function renderDisposalList(){
@@ -13864,7 +13975,7 @@ function renderDisposalList(){
       <td>${a.unit}</td>
       <td>
         <button class="btn btn-outline btn-sm" onclick="undoDisposal(${a.id})">← ย้อนกลับ</button>
-        <button class="btn btn-danger btn-sm" onclick="finalizeDisposal(${a.id})">ยืนยันจำหน่ายถาวร</button>
+        <button class="btn btn-danger btn-sm" onclick="finalizeDisposal(${a.id})">ยืนยันส่งคืนถาวร</button>
       </td>
     </tr>
   `).join('');
@@ -13876,24 +13987,24 @@ function undoDisposal(id){
     a.status = a._prevStatus;
     a._prevStatus = null;
     syncUpdateToSheet(a.asset_code, {status: a.status});
-    a.history.push({title:'ย้อนกลับการเสนอจำหน่าย', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
+    a.history.push({title:'ย้อนกลับการเสนอส่งคืน', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
     renderDisposalList();
     renderRegistry(false);
     showToast('ย้อนกลับสถานะ ' + a.asset_code + ' แล้ว');
-  }, {title:'ย้อนกลับการจำหน่าย', okLabel:'ย้อนกลับ'});
+  }, {title:'ย้อนกลับการส่งคืน', okLabel:'ย้อนกลับ'});
 }
 
 function finalizeDisposal(id){
   const a = ASSETS.find(x=>x.id===id);
-  showConfirm(`ยืนยันจำหน่ายอุปกรณ์ <b>${a.asset_code}</b> ถาวรใช่หรือไม่? <br><b style="color:var(--red-500)">การกระทำนี้ย้อนกลับไม่ได้</b>`, function(){
+  showConfirm(`ยืนยันส่งคืนอุปกรณ์ <b>${a.asset_code}</b> ถาวรใช่หรือไม่? <br><b style="color:var(--red-500)">การกระทำนี้ย้อนกลับไม่ได้</b>`, function(){
     a.status = 'DISPOSED';
     a._prevStatus = null;
     syncUpdateToSheet(a.asset_code, {status: a.status});
-    a.history.push({title:'จำหน่ายถาวร', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
+    a.history.push({title:'ส่งคืนถาวร', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
     renderDisposalList();
     renderRegistry(false);
-    showToast('จำหน่ายอุปกรณ์ ' + a.asset_code + ' ถาวรแล้ว');
-  }, {title:'ยืนยันจำหน่ายถาวร', okLabel:'ยืนยันจำหน่ายถาวร', danger:true});
+    showToast('ส่งคืนอุปกรณ์ ' + a.asset_code + ' ถาวรแล้ว');
+  }, {title:'ยืนยันส่งคืนถาวร', okLabel:'ยืนยันส่งคืนถาวร', danger:true});
 }
 
 /* ---------- Transfer workflow ---------- */

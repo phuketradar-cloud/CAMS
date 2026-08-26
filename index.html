@@ -187,6 +187,8 @@ table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
 }
 .data-table td{padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle;}
 .data-table tbody tr:hover{background:var(--steel-100);}
+.data-table tbody tr.row-returned{background:var(--red-100);}
+.data-table tbody tr.row-returned:hover{background:var(--red-100); filter:brightness(.96);}
 .data-table tbody tr{cursor:pointer;}
 .reg-del-btn{
   border:none; background:none; color:#ff1a1a; font-size:16px; font-weight:800; cursor:pointer;
@@ -13671,7 +13673,7 @@ function renderRegistry(resetFilters){
 
   document.getElementById('regResultCount').textContent = `พบ ${filtered.length} จาก ${ASSETS.length} รายการ`;
   document.getElementById('registryTbody').innerHTML = filtered.map(a=>`
-    <tr onclick="openAssetModal(${a.id})">
+    <tr class="${a.status==='DISPOSED' ? 'row-returned' : ''}" onclick="openAssetModal(${a.id})">
       <td class="code">${a.asset_code}</td><td>${a.type}</td><td>${a.model}</td><td class="code">${a.serial_number}</td>
       <td>${a.holder}</td><td>${a.unit}</td>
       <td><span class="tag ${STATUS_META[a.status].cls}">${STATUS_META[a.status].label}</span></td>

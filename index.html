@@ -189,6 +189,8 @@ table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
 .data-table tbody tr:hover{background:var(--steel-100);}
 .data-table tbody tr.row-returned{background:var(--red-100);}
 .data-table tbody tr.row-returned:hover{background:var(--red-100); filter:brightness(.96);}
+.data-table tbody tr.row-overdue{background:var(--amber-100);}
+.data-table tbody tr.row-overdue:hover{background:var(--amber-100); filter:brightness(.96);}
 .data-table tbody tr{cursor:pointer;}
 .reg-del-btn{
   border:none; background:none; color:#ff1a1a; font-size:16px; font-weight:800; cursor:pointer;
@@ -692,7 +694,22 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
       <!-- ===== Placeholder-style modules ===== -->
       <div class="view" id="view-issue"></div>
       <div class="view" id="view-custody"></div>
-      <div class="view" id="view-borrow"></div>
+      <!-- ===== Borrow-Return (ยืม-คืน) ===== -->
+      <div class="view" id="view-borrow">
+        <div class="card">
+          <div class="card-header"><h3>รายการที่ถูกยืมอยู่ (BRW-)</h3></div>
+          <div class="card-body" style="padding:0;">
+            <table class="data-table">
+              <thead><tr><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>ผู้ยืม</th><th>กำหนดคืน</th><th>สถานที่ใช้งาน</th><th style="width:140px;">ดำเนินการ</th></tr></thead>
+              <tbody id="borrowTbody"></tbody>
+            </table>
+            <div id="borrowEmpty" class="placeholder-box" style="display:none;">
+              <div class="ic">⇌</div><h3>ไม่มีรายการยืมค้างอยู่</h3>
+              <p>เมื่อกด "ยืมอุปกรณ์" จากหน้ารายละเอียดอุปกรณ์ รายการจะมาปรากฏที่นี่จนกว่าจะมีการรับคืน</p>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="view" id="view-repair"></div>
       <div class="view" id="view-inspection"></div>
       <div class="view" id="view-reports"></div>
@@ -730,6 +747,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
       </div>
     </div>
     <div class="modal-footer">
+      <button class="btn btn-steel" id="amBorrowBtn" onclick="openBorrowForm()">ยืมอุปกรณ์</button>
       <button class="btn btn-danger" id="amDisposalBtn" onclick="sendToDisposal()">ส่งคืนอุปกรณ์</button>
       <button class="btn btn-outline" onclick="printAssetLabel(currentAssetId)">พิมพ์ป้าย QR</button>
       <button class="btn btn-outline" onclick="closeModal('assetModalBackdrop')">ปิด</button>
@@ -855,6 +873,37 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('returnFormModal')">ยกเลิก</button>
       <button class="btn btn-danger" onclick="confirmReturnAsset()">ยืนยันส่งคืน</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Borrow Asset Form Modal (ยืมอุปกรณ์) ============ -->
+<div class="modal-backdrop" id="borrowFormModal">
+  <div class="modal w-md">
+    <div class="modal-header">
+      <h3>ยืมอุปกรณ์ — <span id="brwAssetCode" class="code"></span></h3>
+      <button class="x" onclick="closeModal('borrowFormModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field">
+          <label>ผู้ยืม</label>
+          <input type="text" class="filter-select" style="width:100%" id="brwBorrower" list="brwBorrowerList" autocomplete="off">
+          <datalist id="brwBorrowerList"></datalist>
+        </div>
+        <div class="field">
+          <label>กำหนดคืนวันที่</label>
+          <input type="date" id="brwDueDate" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+        </div>
+        <div class="field full">
+          <label>หมายเหตุ</label>
+          <textarea id="brwRemarks" rows="2" placeholder="เช่น ใช้ในภารกิจ / ยืมทดสอบ"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('borrowFormModal')">ยกเลิก</button>
+      <button class="btn btn-steel" onclick="confirmBorrowAsset()">ยืนยันการยืม</button>
     </div>
   </div>
 </div>
@@ -13551,7 +13600,6 @@ const VIEW_TITLES = {
 const PLACEHOLDER_INFO = {
   issue:     {ic:'↥', flow:'คลัง (IN_STOCK) → เบิกจ่าย → ครอบครอง (ASSIGNED) → ISS-YYYY-#####', desc:'จ่ายอุปกรณ์จากคลังให้บุคคล/หน่วยรับผิดชอบ พร้อมผูกผู้ครอบครองและหน่วยงาน'},
   custody:   {ic:'◇', flow:'อ้างอิงจากธุรกรรมล่าสุดของแต่ละอุปกรณ์ในทะเบียน', desc:'มุมมองสรุปอุปกรณ์ตามผู้ครอบครองปัจจุบัน ดูรายละเอียดแบบเต็มได้ที่หน้า "ทะเบียนอุปกรณ์"'},
-  borrow:    {ic:'⇌', flow:'ผู้ครอบครองเดิม → ยืม (กำหนดคืน) → คืน → กลับสู่ผู้ครอบครองเดิม → BRW-YYYY-#####', desc:'บันทึกการยืมชั่วคราว พร้อมวันครบกำหนดคืนและการแจ้งเตือนเมื่อเกินกำหนด'},
   repair:    {ic:'⚙', flow:'ASSIGNED/IN_STOCK → ส่งซ่อม (REPAIR) → ซ่อมสำเร็จ/ไม่สำเร็จ → REP-YYYY-#####', desc:'บันทึกอาการชำรุด ผู้รับซ่อม ผลการซ่อม และค่าใช้จ่าย'},
   inspection:{ic:'✓', flow:'ตั้งรอบตรวจ → ตรวจนับรายชิ้น → พบ/ไม่พบ/ชำรุด → INS-YYYY-#####', desc:'ตรวจนับอุปกรณ์ตามรอบ อุปกรณ์ที่ไม่พบจะถูกเปลี่ยนสถานะเป็น "สูญหาย" โดยอัตโนมัติ'},
   reports:   {ic:'▤', flow:'สรุปตามหน่วย / สถานะ / ช่วงเวลา + audit log', desc:'รายงานสรุปภาพรวมทะเบียนอุปกรณ์และประวัติการเปลี่ยนแปลงทั้งหมดในระบบ'},
@@ -13572,6 +13620,7 @@ function goView(view){
   if(view==='receive') initReceiveForm();
   if(view==='transfer') renderTransferForm();
   if(view==='disposal'){ initBackdatedDisposalForm(); renderDisposalList(); }
+  if(view==='borrow') renderBorrowList();
   if(PLACEHOLDER_INFO[view]) renderPlaceholder(view);
 }
 
@@ -13617,12 +13666,13 @@ function renderDashboard(){
   }).join('');
   document.querySelector('#recentTxTable tbody').innerHTML = rows;
 
-  const overdue = ASSETS.filter(a=>a.status==='BORROWED').slice(0,2);
+  const todayStr = new Date().toISOString().slice(0,10);
+  const overdue = ASSETS.filter(a=>a.status==='BORROWED' && a._borrow && a._borrow.dueDate && a._borrow.dueDate < todayStr).slice(0,2);
   const repairOver = ASSETS.filter(a=>a.status==='REPAIR').slice(0,2);
   const notFound = ASSETS.filter(a=>a.status==='LOST');
   const uninspected = ASSETS.filter(a=>a.status==='INSPECTION').slice(0,2);
   let alerts = [];
-  overdue.forEach(a=>alerts.push({dot:'amber', text:`${a.asset_code} ยืมเกินกำหนดคืน โดย ${a.holder}`, t:'ยืม-คืน'}));
+  overdue.forEach(a=>alerts.push({dot:'amber', text:`${a.asset_code} ยืมเกินกำหนดคืน (กำหนด ${a._borrow.dueDate}) โดย ${a._borrow.borrower}`, t:'ยืม-คืน'}));
   repairOver.forEach(a=>alerts.push({dot:'amber', text:`${a.asset_code} อยู่ระหว่างซ่อมนานเกินคาด`, t:'ซ่อม'}));
   notFound.forEach(a=>alerts.push({dot:'red', text:`${a.asset_code} ไม่พบในการตรวจนับล่าสุด`, t:'ตรวจสอบ'}));
   uninspected.forEach(a=>alerts.push({dot:'amber', text:`${a.asset_code} รอการตรวจสอบในรอบนี้`, t:'ตรวจสอบ'}));
@@ -13807,6 +13857,7 @@ function openAssetModal(id){
   `).join('');
   renderAttachments(a);
   document.getElementById('amDisposalBtn').style.display = a.status==='DISPOSAL'||a.status==='DISPOSED' ? 'none' : (CURRENT_ROLE==='VIEWER'?'none':'inline-flex');
+  document.getElementById('amBorrowBtn').style.display = (a.status==='IN_STOCK'||a.status==='ASSIGNED') ? (CURRENT_ROLE==='VIEWER'?'none':'inline-flex') : 'none';
   switchTab('history', document.querySelector('.tab-btn[data-tab="history"]'));
   openModal('assetModalBackdrop');
 }
@@ -14107,6 +14158,89 @@ function finalizeDisposal(id){
     renderRegistry(false);
     showToast('ส่งคืนอุปกรณ์ ' + a.asset_code + ' ถาวรแล้ว');
   }, {title:'ยืนยันส่งคืนถาวร', okLabel:'ยืนยันส่งคืนถาวร', danger:true});
+}
+
+/* ---------- Borrow-return workflow (ยืม-คืน) ---------- */
+let brwTargetId = null;
+
+function openBorrowForm(id){
+  brwTargetId = id || currentAssetId;
+  const a = ASSETS.find(x=>x.id===brwTargetId);
+  if(!a) return;
+  document.getElementById('brwAssetCode').textContent = a.asset_code;
+  document.getElementById('brwBorrower').value = '';
+  document.getElementById('brwRemarks').value = '';
+  document.getElementById('brwBorrowerList').innerHTML = [...new Set(ASSETS.map(x=>x.holder).filter(h=>h && h!=='-' && h!=='(อยู่ในคลัง)'))]
+    .map(h=>`<option value="${h}"></option>`).join('');
+  const due = new Date();
+  due.setDate(due.getDate() + 7);
+  document.getElementById('brwDueDate').value = due.toISOString().slice(0,10);
+  openModal('borrowFormModal');
+}
+
+function confirmBorrowAsset(){
+  const a = ASSETS.find(x=>x.id===brwTargetId);
+  if(!a) return;
+  const borrower = document.getElementById('brwBorrower').value.trim();
+  const dueDate = document.getElementById('brwDueDate').value;
+  const remarks = document.getElementById('brwRemarks').value.trim();
+
+  if(!borrower){ showToast('กรุณาระบุผู้ยืม'); return; }
+  if(!dueDate){ showToast('กรุณาระบุกำหนดคืนวันที่'); return; }
+
+  a._prevHolder = a.holder;
+  a._prevStatus = a.status;
+  a._borrow = {borrower, dueDate, remarks};
+  a.holder = borrower;
+  a.status = 'BORROWED';
+
+  const summary = 'ผู้ยืม: ' + borrower + ' · กำหนดคืน: ' + dueDate + (remarks ? ' · ' + remarks : '');
+  a.history.push({title:'ยืมอุปกรณ์', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
+  syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder});
+
+  closeModal('borrowFormModal');
+  closeModal('assetModalBackdrop');
+  showToast('บันทึกการยืม ' + a.asset_code + ' โดย ' + borrower + ' แล้ว');
+  renderRegistry(false);
+  if(document.getElementById('view-borrow').classList.contains('active')) renderBorrowList();
+}
+
+function renderBorrowList(){
+  const list = ASSETS.filter(a=>a.status==='BORROWED');
+  const tbody = document.getElementById('borrowTbody');
+  document.getElementById('borrowEmpty').style.display = list.length ? 'none':'block';
+  const todayStr = new Date().toISOString().slice(0,10);
+  tbody.innerHTML = list.map(a=>{
+    const due = a._borrow ? a._borrow.dueDate : '';
+    const overdue = !!(due && due < todayStr);
+    return `
+    <tr class="${overdue ? 'row-overdue' : ''}">
+      <td class="code">${a.asset_code}</td><td>${a.model}</td>
+      <td>${a._borrow ? a._borrow.borrower : a.holder}</td>
+      <td class="code">${due || '-'}${overdue ? ' <span class="tag tag-DISPOSAL">เกินกำหนด</span>' : ''}</td>
+      <td>${a.location}</td>
+      <td><button class="btn btn-primary btn-sm" onclick="returnBorrow(${a.id})">รับคืน</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function returnBorrow(id){
+  const a = ASSETS.find(x=>x.id===id);
+  if(!a) return;
+  const borrower = a._borrow ? a._borrow.borrower : a.holder;
+  const backTo = a._prevHolder || '-';
+  showConfirm(`ยืนยันรับคืน <b>${a.asset_code}</b> จาก <b>${borrower}</b> ใช่หรือไม่? <br>ผู้ครอบครองจะกลับเป็น <b>${backTo}</b>`, function(){
+    a.holder = a._prevHolder || a.holder;
+    a.status = a._prevStatus || 'ASSIGNED';
+    a.history.push({title:'รับคืนอุปกรณ์ยืม', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta:'รับคืนจาก ' + borrower + ' · กลับสู่ ' + a.holder, date:'วันนี้'});
+    syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder});
+    delete a._borrow;
+    delete a._prevHolder;
+    delete a._prevStatus;
+    renderBorrowList();
+    renderRegistry(false);
+    showToast('รับคืนอุปกรณ์ ' + a.asset_code + ' แล้ว');
+  }, {title:'รับคืนอุปกรณ์ยืม', okLabel:'ยืนยันรับคืน'});
 }
 
 /* ---------- Transfer workflow ---------- */

@@ -499,12 +499,12 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
                 <option value="">สถานะทั้งหมด</option>
               </select>
               <select class="filter-select" id="regUnitFilter" onchange="onRegistryFilter()">
-                <option value="">หน่วยทั้งหมด</option>
+                <option value="">สถานที่ทั้งหมด</option>
               </select>
             </div>
             <div class="result-count" id="regResultCount"></div>
             <table class="data-table">
-              <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th><th>สถานที่</th><th>สถานะ</th><th></th></tr></thead>
+              <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th><th>สถานที่ใช้งาน</th><th>สถานะ</th><th></th></tr></thead>
               <tbody id="registryTbody"></tbody>
             </table>
           </div>
@@ -584,7 +584,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
           <div class="card-header"><h3>รายการเสนอส่งคืน (DSP-)</h3></div>
           <div class="card-body" style="padding:0;">
             <table class="data-table">
-              <thead><tr><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>สถานะก่อนเสนอส่งคืน</th><th>สถานที่</th><th style="width:220px;">ดำเนินการ</th></tr></thead>
+              <thead><tr><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>สถานะก่อนเสนอส่งคืน</th><th>สถานที่ใช้งาน</th><th style="width:220px;">ดำเนินการ</th></tr></thead>
               <tbody id="disposalTbody"></tbody>
             </table>
             <div id="disposalEmpty" class="placeholder-box" style="display:none;">
@@ -13723,9 +13723,10 @@ function initFilters(){
     statusSel.appendChild(opt);
   });
   const unitSel = document.getElementById('regUnitFilter');
-  UNITS.forEach(u=>{
+  const locations = [...new Set(ASSETS.map(a=>a.location).filter(l=>l && l!=='-'))].sort();
+  locations.forEach(loc=>{
     const opt = document.createElement('option');
-    opt.value = u; opt.textContent = u;
+    opt.value = loc; opt.textContent = loc;
     unitSel.appendChild(opt);
   });
 }
@@ -13757,7 +13758,7 @@ function renderRegistry(resetFilters){
   const filtered = ASSETS.filter(a=>{
     if(typeF && a.type!==typeF) return false;
     if(statusF && a.status!==statusF) return false;
-    if(unitF && a.unit!==unitF) return false;
+    if(unitF && a.location!==unitF) return false;
     if(q){
       const hay = (a.asset_code+' '+a.serial_number+' '+a.model+' '+a.holder+' '+a.category+' '+a.type).toLowerCase();
       if(!hay.includes(q)) return false;

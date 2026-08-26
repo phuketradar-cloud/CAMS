@@ -197,9 +197,15 @@ table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
 .reg-del-btn:hover{background:var(--red-100);}
 .reg-dispose-btn{
   border:1px solid var(--red-500); background:none; color:var(--red-500); font-size:11.5px; font-weight:600; cursor:pointer;
-  padding:4px 8px; border-radius:6px; line-height:1; margin-right:6px;
+  padding:4px 8px; border-radius:6px; line-height:1;
 }
 .reg-dispose-btn:hover{background:var(--red-100);}
+.reg-edit-btn{
+  border:none; background:none; color:var(--steel-500); font-size:14px; cursor:pointer;
+  width:26px; height:26px; border-radius:6px; line-height:1;
+}
+.reg-edit-btn:hover{background:var(--steel-100);}
+.reg-actions{display:flex; align-items:center; gap:6px; justify-content:flex-start;}
 
 /* ---------- Tags ---------- */
 .tag{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;}
@@ -750,6 +756,48 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('confirmModal')">ยกเลิก</button>
       <button class="btn btn-danger" id="confirmOkBtn">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Edit Asset Modal ============ -->
+<div class="modal-backdrop" id="editAssetModal">
+  <div class="modal w-md">
+    <div class="modal-header">
+      <h3>แก้ไขข้อมูลอุปกรณ์ — <span id="editAssetCode" class="code"></span></h3>
+      <button class="x" onclick="closeModal('editAssetModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field">
+          <label>ชนิด</label>
+          <input type="text" class="filter-select" style="width:100%" id="editType" list="rcvTypeList" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>รุ่น/แบบ</label>
+          <input type="text" class="filter-select" style="width:100%" id="editModel" list="rcvModelList" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>หมายเลขเครื่อง (S/N)</label>
+          <input type="text" class="mono" id="editSerial" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+        </div>
+        <div class="field">
+          <label>ผู้ครอบครอง</label>
+          <input type="text" class="filter-select" style="width:100%" id="editHolder" list="rcvHolderList" autocomplete="off">
+        </div>
+        <div class="field full">
+          <label>สถานที่</label>
+          <input type="text" class="filter-select" style="width:100%" id="editLocation" list="rcvLocationList" autocomplete="off">
+        </div>
+        <div class="field full">
+          <label>หมายเหตุ</label>
+          <textarea id="editRemarks" rows="2"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('editAssetModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveAssetEdit()">บันทึกการแก้ไข</button>
     </div>
   </div>
 </div>
@@ -13407,6 +13455,52 @@ function deleteAsset(id){
   }, {title:'ลบรายการ', okLabel:'ลบถาวร', danger:true});
 }
 
+let editTargetId = null;
+function openEditAssetModal(id){
+  const a = ASSETS.find(x=>x.id===id);
+  if(!a) return;
+  editTargetId = id;
+  document.getElementById('editAssetCode').textContent = a.asset_code;
+  document.getElementById('editType').value = a.type || '';
+  document.getElementById('editModel').value = a.model || '';
+  document.getElementById('editSerial').value = a.serial_number === '-' ? '' : (a.serial_number || '');
+  document.getElementById('editHolder').value = a.holder === '(อยู่ในคลัง)' ? '' : (a.holder || '');
+  document.getElementById('editLocation').value = a.location === '-' ? '' : (a.location || '');
+  document.getElementById('editRemarks').value = a.remarks || '';
+  openModal('editAssetModal');
+}
+
+function saveAssetEdit(){
+  const a = ASSETS.find(x=>x.id===editTargetId);
+  if(!a) return;
+  const type = document.getElementById('editType').value.trim();
+  const model = document.getElementById('editModel').value.trim();
+  const serial = document.getElementById('editSerial').value.trim();
+  const holder = document.getElementById('editHolder').value.trim();
+  const location = document.getElementById('editLocation').value.trim();
+  const remarks = document.getElementById('editRemarks').value.trim();
+
+  if(!type || !model){ showToast('กรุณาระบุชนิดและรุ่น/แบบ'); return; }
+
+  a.type = type;
+  a.model = model;
+  a.category = MODEL_CATEGORY[model] || a.category;
+  a.serial_number = serial || '-';
+  a.holder = holder || '(อยู่ในคลัง)';
+  a.location = location || '-';
+  a.remarks = remarks;
+  a.history.push({title:'แก้ไขข้อมูลอุปกรณ์', doc:'-', meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
+
+  syncUpdateToSheet(a.asset_code, {
+    type: a.type, model: a.model, category: a.category, serial_number: a.serial_number,
+    holder: a.holder, location: a.location, remarks: a.remarks,
+  });
+
+  closeModal('editAssetModal');
+  renderRegistry(false);
+  showToast('บันทึกการแก้ไข ' + a.asset_code + ' สำเร็จ');
+}
+
 /* ---------- Access gate (decoy passcode, not real security) ---------- */
 const GATE_CODE = 'RCC2569';
 function checkGateCode(){
@@ -13678,8 +13772,13 @@ function renderRegistry(resetFilters){
       <td>${a.holder}</td><td>${a.unit}</td>
       <td><span class="tag ${STATUS_META[a.status].cls}">${STATUS_META[a.status].label}</span></td>
       <td>
-        ${(a.status==='DISPOSAL'||a.status==='DISPOSED') ? '' : `<button class="reg-dispose-btn" onclick="event.stopPropagation(); sendToDisposal(${a.id})">ส่งคืน</button>`}
-        <button class="reg-del-btn" onclick="event.stopPropagation(); deleteAsset(${a.id})" title="ลบรายการ">✕</button>
+        <div class="reg-actions">
+          <button class="reg-edit-btn" onclick="event.stopPropagation(); openEditAssetModal(${a.id})" title="แก้ไข">✎</button>
+          ${(a.status==='DISPOSAL'||a.status==='DISPOSED')
+            ? `<button class="reg-dispose-btn" style="visibility:hidden;" tabindex="-1">ส่งคืน</button>`
+            : `<button class="reg-dispose-btn" onclick="event.stopPropagation(); sendToDisposal(${a.id})">ส่งคืน</button>`}
+          <button class="reg-del-btn" onclick="event.stopPropagation(); deleteAsset(${a.id})" title="ลบรายการ">✕</button>
+        </div>
       </td>
     </tr>
   `).join('') || `<tr><td colspan="8" style="text-align:center; color:var(--text-400); padding:24px;">ไม่พบรายการที่ตรงกับเงื่อนไข</td></tr>`;

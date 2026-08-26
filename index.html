@@ -530,6 +530,38 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
 
       <!-- ===== Disposal ===== -->
       <div class="view" id="view-disposal">
+        <div class="card" style="max-width:720px; margin-bottom:16px;">
+          <div class="card-header"><h3>บันทึกจำหน่ายย้อนหลัง (DSP-)</h3></div>
+          <div class="card-body">
+            <div class="form-note" style="margin-bottom:12px;">สำหรับบันทึกอุปกรณ์ที่จำหน่ายไปแล้วในอดีต — ถ้าเลขพัสดุ ทอ. มีอยู่ในทะเบียนแล้ว ระบบจะปรับสถานะเป็น "จำหน่ายแล้ว" ให้ทันที ถ้าไม่มีจะสร้างรายการใหม่ในสถานะจำหน่ายแล้วเลย</div>
+            <div class="form-grid">
+              <div class="field">
+                <label>เลขพัสดุ ทอ.</label>
+                <input type="text" class="filter-select" style="width:100%" id="bdCode" list="bdCodeList" autocomplete="off">
+                <datalist id="bdCodeList"></datalist>
+              </div>
+              <div class="field">
+                <label>วันที่จำหน่าย</label>
+                <input type="date" id="bdDate" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+              </div>
+              <div class="field">
+                <label>ชนิด (กรอกเฉพาะเลขพัสดุใหม่)</label>
+                <input type="text" class="filter-select" style="width:100%" id="bdType" list="rcvTypeList" autocomplete="off">
+              </div>
+              <div class="field">
+                <label>รุ่น/แบบ (กรอกเฉพาะเลขพัสดุใหม่)</label>
+                <input type="text" class="filter-select" style="width:100%" id="bdModel" list="rcvModelList" autocomplete="off">
+              </div>
+              <div class="field full">
+                <label>เหตุผล/หมายเหตุการจำหน่าย</label>
+                <textarea id="bdRemarks" rows="2" placeholder="เช่น ชำรุดเกินซ่อม / หมดอายุการใช้งาน / เลขที่คำสั่งจำหน่าย"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer" style="position:static;">
+            <button class="btn btn-danger" onclick="submitBackdatedDisposal()">บันทึกจำหน่ายย้อนหลัง</button>
+          </div>
+        </div>
         <div class="card">
           <div class="card-header"><h3>รายการเสนอจำหน่าย (DSP-)</h3></div>
           <div class="card-body" style="padding:0;">
@@ -13397,7 +13429,7 @@ function goView(view){
   if(view==='registry') renderRegistry(true);
   if(view==='receive') initReceiveForm();
   if(view==='transfer') renderTransferForm();
-  if(view==='disposal') renderDisposalList();
+  if(view==='disposal'){ initBackdatedDisposalForm(); renderDisposalList(); }
   if(PLACEHOLDER_INFO[view]) renderPlaceholder(view);
 }
 
@@ -13737,6 +13769,67 @@ function sendToDisposal(){
     renderRegistry(false);
     if(document.getElementById('view-disposal').classList.contains('active')) renderDisposalList();
   }, {title:'ส่งจำหน่ายอุปกรณ์', okLabel:'ยืนยันส่งจำหน่าย', danger:true});
+}
+
+function initBackdatedDisposalForm(){
+  document.getElementById('bdCodeList').innerHTML = ASSETS.map(a=>`<option value="${a.asset_code}"></option>`).join('');
+  if(!document.getElementById('bdDate').value) document.getElementById('bdDate').value = new Date().toISOString().slice(0,10);
+}
+
+function submitBackdatedDisposal(){
+  const code = document.getElementById('bdCode').value.trim();
+  const date = document.getElementById('bdDate').value;
+  const type = document.getElementById('bdType').value.trim();
+  const model = document.getElementById('bdModel').value.trim();
+  const remarks = document.getElementById('bdRemarks').value.trim();
+
+  if(!code){ showToast('กรุณาระบุเลขพัสดุ ทอ.'); return; }
+  if(!date){ showToast('กรุณาระบุวันที่จำหน่าย'); return; }
+
+  const existing = ASSETS.find(a=>a.asset_code===code);
+  if(!existing && (!type || !model)){ showToast('เลขพัสดุนี้ไม่มีในทะเบียน กรุณาระบุชนิดและรุ่น/แบบด้วย'); return; }
+
+  showConfirm(`ยืนยันบันทึกจำหน่าย <b>${code}</b> ย้อนหลัง วันที่ ${date} ใช่หรือไม่? <br><b style="color:var(--red-500)">สถานะจะเป็น "จำหน่ายแล้ว" ทันที ย้อนกลับไม่ได้</b>`, function(){
+    const doc = 'DSP-2569-'+pad(LOG_SEQ++,5);
+    if(existing){
+      existing.status = 'DISPOSED';
+      existing._prevStatus = null;
+      existing.remarks = remarks ? (existing.remarks ? existing.remarks + ' — ' : '') + remarks : existing.remarks;
+      existing.history.push({title:'จำหน่ายย้อนหลัง', doc: doc, meta:'โดย ' + CURRENT_ROLE + (remarks ? ' — ' + remarks : ''), date: date});
+      syncUpdateToSheet(existing.asset_code, {status:'DISPOSED', remarks: existing.remarks});
+      showToast('บันทึกจำหน่ายย้อนหลัง ' + code + ' สำเร็จ');
+    } else {
+      const newAsset = {
+        id: Math.max(0, ...ASSETS.map(a=>a.id)) + 1,
+        asset_code: code,
+        serial_number: '-',
+        model: model,
+        category: MODEL_CATEGORY[model] || 'อื่นๆ',
+        type: type,
+        status: 'DISPOSED',
+        prev_status: null,
+        unit: '',
+        holder: '-',
+        location: '-',
+        acquired_date: date,
+        remarks: remarks,
+        attachments: [],
+        history: [
+          {title:'จำหน่ายย้อนหลัง (บันทึกใหม่)', doc: doc, meta:'โดย ' + CURRENT_ROLE + (remarks ? ' — ' + remarks : ''), date: date},
+        ],
+      };
+      ASSETS.push(newAsset);
+      syncAddToSheet(newAsset);
+      showToast('บันทึกจำหน่ายย้อนหลัง ' + code + ' (รายการใหม่) สำเร็จ');
+    }
+    document.getElementById('bdCode').value = '';
+    document.getElementById('bdType').value = '';
+    document.getElementById('bdModel').value = '';
+    document.getElementById('bdRemarks').value = '';
+    initBackdatedDisposalForm();
+    renderDisposalList();
+    if(document.getElementById('view-registry').classList.contains('active')) renderRegistry(false);
+  }, {title:'บันทึกจำหน่ายย้อนหลัง', okLabel:'ยืนยันบันทึก', danger:true});
 }
 
 function renderDisposalList(){

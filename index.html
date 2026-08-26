@@ -531,35 +531,40 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
       <!-- ===== Disposal ===== -->
       <div class="view" id="view-disposal">
         <div class="card" style="max-width:720px; margin-bottom:16px;">
-          <div class="card-header"><h3>บันทึกจำหน่ายย้อนหลัง (DSP-)</h3></div>
-          <div class="card-body">
-            <div class="form-note" style="margin-bottom:12px;">สำหรับบันทึกอุปกรณ์ที่จำหน่ายไปแล้วในอดีต — ถ้าเลขพัสดุ ทอ. มีอยู่ในทะเบียนแล้ว ระบบจะปรับสถานะเป็น "จำหน่ายแล้ว" ให้ทันที ถ้าไม่มีจะสร้างรายการใหม่ในสถานะจำหน่ายแล้วเลย</div>
-            <div class="form-grid">
-              <div class="field">
-                <label>เลขพัสดุ ทอ.</label>
-                <input type="text" class="filter-select" style="width:100%" id="bdCode" list="bdCodeList" autocomplete="off">
-                <datalist id="bdCodeList"></datalist>
-              </div>
-              <div class="field">
-                <label>วันที่จำหน่าย</label>
-                <input type="date" id="bdDate" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
-              </div>
-              <div class="field">
-                <label>ชนิด (กรอกเฉพาะเลขพัสดุใหม่)</label>
-                <input type="text" class="filter-select" style="width:100%" id="bdType" list="rcvTypeList" autocomplete="off">
-              </div>
-              <div class="field">
-                <label>รุ่น/แบบ (กรอกเฉพาะเลขพัสดุใหม่)</label>
-                <input type="text" class="filter-select" style="width:100%" id="bdModel" list="rcvModelList" autocomplete="off">
-              </div>
-              <div class="field full">
-                <label>เหตุผล/หมายเหตุการจำหน่าย</label>
-                <textarea id="bdRemarks" rows="2" placeholder="เช่น ชำรุดเกินซ่อม / หมดอายุการใช้งาน / เลขที่คำสั่งจำหน่าย"></textarea>
+          <div class="card-header" style="cursor:pointer;" onclick="toggleBackdatedForm()">
+            <h3>บันทึกจำหน่ายย้อนหลัง (DSP-)</h3>
+            <span id="bdToggleIcon" style="color:var(--text-400); font-size:12px;">▸ ขยาย</span>
+          </div>
+          <div id="bdFormBody" style="display:none;">
+            <div class="card-body">
+              <div class="form-note" style="margin-bottom:12px;">สำหรับบันทึกอุปกรณ์ที่จำหน่ายไปแล้วในอดีต — ถ้าเลขพัสดุ ทอ. มีอยู่ในทะเบียนแล้ว ระบบจะปรับสถานะเป็น "จำหน่ายแล้ว" ให้ทันที ถ้าไม่มีจะสร้างรายการใหม่ในสถานะจำหน่ายแล้วเลย</div>
+              <div class="form-grid">
+                <div class="field">
+                  <label>เลขพัสดุ ทอ.</label>
+                  <input type="text" class="filter-select" style="width:100%" id="bdCode" list="bdCodeList" autocomplete="off">
+                  <datalist id="bdCodeList"></datalist>
+                </div>
+                <div class="field">
+                  <label>วันที่จำหน่าย</label>
+                  <input type="date" id="bdDate" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+                </div>
+                <div class="field">
+                  <label>ชนิด (กรอกเฉพาะเลขพัสดุใหม่)</label>
+                  <input type="text" class="filter-select" style="width:100%" id="bdType" list="rcvTypeList" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label>รุ่น/แบบ (กรอกเฉพาะเลขพัสดุใหม่)</label>
+                  <input type="text" class="filter-select" style="width:100%" id="bdModel" list="rcvModelList" autocomplete="off">
+                </div>
+                <div class="field full">
+                  <label>เหตุผล/หมายเหตุการจำหน่าย</label>
+                  <textarea id="bdRemarks" rows="2" placeholder="เช่น ชำรุดเกินซ่อม / หมดอายุการใช้งาน / เลขที่คำสั่งจำหน่าย"></textarea>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="modal-footer" style="position:static;">
-            <button class="btn btn-danger" onclick="submitBackdatedDisposal()">บันทึกจำหน่ายย้อนหลัง</button>
+            <div class="modal-footer" style="position:static;">
+              <button class="btn btn-danger" onclick="submitBackdatedDisposal()">บันทึกจำหน่ายย้อนหลัง</button>
+            </div>
           </div>
         </div>
         <div class="card">
@@ -13769,6 +13774,14 @@ function sendToDisposal(){
     renderRegistry(false);
     if(document.getElementById('view-disposal').classList.contains('active')) renderDisposalList();
   }, {title:'ส่งจำหน่ายอุปกรณ์', okLabel:'ยืนยันส่งจำหน่าย', danger:true});
+}
+
+function toggleBackdatedForm(){
+  const body = document.getElementById('bdFormBody');
+  const icon = document.getElementById('bdToggleIcon');
+  const show = body.style.display === 'none';
+  body.style.display = show ? 'block' : 'none';
+  icon.textContent = show ? '▾ ย่อ' : '▸ ขยาย';
 }
 
 function initBackdatedDisposalForm(){

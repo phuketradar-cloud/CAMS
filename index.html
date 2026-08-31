@@ -193,9 +193,9 @@ table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
 .data-table tbody tr.row-overdue:hover{background:var(--amber-100); filter:brightness(.96);}
 .data-table tbody tr.row-selected{background:var(--green-100);}
 .data-table tbody tr.row-selected:hover{background:var(--green-100); filter:brightness(.96);}
-.brw-search-scroll{max-height:240px; overflow-y:auto; margin-bottom:10px; border:1px solid var(--border); border-radius:8px;}
-.brw-search-scroll table{margin:0;}
-.brw-search-scroll thead th{position:sticky; top:0; z-index:1;}
+.search-result-scroll{max-height:240px; overflow-y:auto; margin-bottom:10px; border:1px solid var(--border); border-radius:8px;}
+.search-result-scroll table{margin:0;}
+.search-result-scroll thead th{position:sticky; top:0; z-index:1;}
 .data-table tbody tr{cursor:pointer;}
 .reg-del-btn{
   border:none; background:none; color:#ff1a1a; font-size:16px; font-weight:800; cursor:pointer;
@@ -696,8 +696,63 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
         </div></div>
       </div>
 
-      <!-- ===== Placeholder-style modules ===== -->
-      <div class="view" id="view-issue"></div>
+      <!-- ===== Issue (เบิกจ่าย) ===== -->
+      <div class="view" id="view-issue">
+        <div class="card" style="max-width:720px; margin-bottom:16px;">
+          <div class="card-header" style="cursor:pointer;" onclick="toggleIssueForm()">
+            <h3>บันทึกการเบิกจ่าย (ISS-)</h3>
+            <span id="issToggleIcon" style="color:var(--text-400); font-size:12px;">▸ ขยาย</span>
+          </div>
+          <div id="issFormBody" style="display:none;">
+            <div class="card-body">
+              <label style="display:block; font-size:12.5px; color:var(--text-600); margin-bottom:6px; font-weight:500;">ค้นหาอุปกรณ์ในคลังที่จะเบิกจ่าย</label>
+              <div class="search-box" id="issSearchBox" style="margin-bottom:8px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="issSearch" placeholder="ค้นหา: เลขพัสดุ ทอ. / S/N / รุ่น/แบบ" oninput="onIssSearch()">
+                <button class="clear-btn" onclick="clearIssSearch()">✕</button>
+              </div>
+              <div class="result-count" id="issResultCount"></div>
+              <div class="search-result-scroll">
+                <table class="data-table">
+                  <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th></tr></thead>
+                  <tbody id="issSearchTbody"></tbody>
+                </table>
+              </div>
+              <div class="form-note" id="issSelectedInfo" style="margin-bottom:14px;"></div>
+              <div class="form-grid">
+                <div class="field">
+                  <label>ผู้รับ (ผู้ครอบครองใหม่)</label>
+                  <input type="text" class="filter-select" style="width:100%" id="issHolder" list="rcvHolderList" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label>สถานที่ใช้งาน</label>
+                  <input type="text" class="filter-select" style="width:100%" id="issLocation" list="rcvLocationList" autocomplete="off">
+                </div>
+                <div class="field full">
+                  <label>หมายเหตุ</label>
+                  <textarea id="issRemarks" rows="2" placeholder="เช่น เบิกใช้ในภารกิจ / มอบหมายประจำหน่วย"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer" style="position:static;">
+              <button class="btn btn-primary" onclick="submitIssue()">บันทึกการเบิกจ่าย</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>รายการเบิกจ่ายล่าสุด (ISS-)</h3></div>
+          <div class="card-body" style="padding:0;">
+            <table class="data-table">
+              <thead><tr><th>เลขที่เอกสาร</th><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>ผู้รับ</th><th>สถานที่ใช้งาน</th><th>วันที่</th></tr></thead>
+              <tbody id="issRecentTbody"></tbody>
+            </table>
+            <div id="issRecentEmpty" class="placeholder-box" style="display:none;">
+              <div class="ic">↥</div><h3>ยังไม่มีรายการเบิกจ่าย</h3>
+              <p>เมื่อบันทึกการเบิกจ่ายด้านบน รายการจะมาปรากฏที่นี่</p>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="view" id="view-custody"></div>
       <!-- ===== Borrow-Return (ยืม-คืน) ===== -->
       <div class="view" id="view-borrow">
@@ -715,7 +770,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
                 <button class="clear-btn" onclick="clearBrwSearch()">✕</button>
               </div>
               <div class="result-count" id="brwResultCount"></div>
-              <div class="brw-search-scroll">
+              <div class="search-result-scroll">
                 <table class="data-table">
                   <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th></tr></thead>
                   <tbody id="brwSearchTbody"></tbody>
@@ -756,7 +811,64 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
           </div>
         </div>
       </div>
-      <div class="view" id="view-repair"></div>
+      <!-- ===== Repair (ซ่อม) ===== -->
+      <div class="view" id="view-repair">
+        <div class="card" style="max-width:720px; margin-bottom:16px;">
+          <div class="card-header" style="cursor:pointer;" onclick="toggleRepairForm()">
+            <h3>ส่งซ่อม (REP-)</h3>
+            <span id="repToggleIcon" style="color:var(--text-400); font-size:12px;">▸ ขยาย</span>
+          </div>
+          <div id="repFormBody" style="display:none;">
+            <div class="card-body">
+              <label style="display:block; font-size:12.5px; color:var(--text-600); margin-bottom:6px; font-weight:500;">ค้นหาอุปกรณ์ที่จะส่งซ่อม</label>
+              <div class="search-box" id="repSearchBox" style="margin-bottom:8px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="repSearch" placeholder="ค้นหา: เลขพัสดุ ทอ. / S/N / รุ่น/แบบ / ผู้ครอบครอง" oninput="onRepSearch()">
+                <button class="clear-btn" onclick="clearRepSearch()">✕</button>
+              </div>
+              <div class="result-count" id="repResultCount"></div>
+              <div class="search-result-scroll">
+                <table class="data-table">
+                  <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>S/N</th><th>ผู้ครอบครอง</th></tr></thead>
+                  <tbody id="repSearchTbody"></tbody>
+                </table>
+              </div>
+              <div class="form-note" id="repSelectedInfo" style="margin-bottom:14px;"></div>
+              <div class="form-grid">
+                <div class="field full">
+                  <label>อาการชำรุด</label>
+                  <textarea id="repIssue" rows="2" placeholder="เช่น จอไม่ติด / วิทยุไม่รับสัญญาณ"></textarea>
+                </div>
+                <div class="field">
+                  <label>ผู้รับซ่อม / หน่วยซ่อม</label>
+                  <input type="text" class="filter-select" style="width:100%" id="repRepairer" list="repRepairerList" autocomplete="off">
+                  <datalist id="repRepairerList"></datalist>
+                </div>
+                <div class="field">
+                  <label>วันที่ส่งซ่อม</label>
+                  <input type="date" id="repSentDate" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer" style="position:static;">
+              <button class="btn btn-steel" onclick="submitRepair()">ส่งซ่อม</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>รายการที่อยู่ระหว่างซ่อม (REP-)</h3></div>
+          <div class="card-body" style="padding:0;">
+            <table class="data-table">
+              <thead><tr><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>อาการชำรุด</th><th>ผู้รับซ่อม</th><th>วันที่ส่ง</th><th style="width:160px;">ดำเนินการ</th></tr></thead>
+              <tbody id="repQueueTbody"></tbody>
+            </table>
+            <div id="repQueueEmpty" class="placeholder-box" style="display:none;">
+              <div class="ic">⚙</div><h3>ไม่มีรายการซ่อมค้างอยู่</h3>
+              <p>เมื่อส่งซ่อมด้านบน รายการจะมาปรากฏที่นี่จนกว่าจะสรุปผล</p>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="view" id="view-inspection"></div>
       <div class="view" id="view-reports"></div>
       <div class="view" id="view-admin"></div>
@@ -919,6 +1031,43 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('returnFormModal')">ยกเลิก</button>
       <button class="btn btn-danger" onclick="confirmReturnAsset()">ยืนยันส่งคืน</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Repair Result Modal (สรุปผลการซ่อม) ============ -->
+<div class="modal-backdrop" id="repairResultModal">
+  <div class="modal w-md">
+    <div class="modal-header">
+      <h3>สรุปผลการซ่อม — <span id="repResultAssetCode" class="code"></span></h3>
+      <button class="x" onclick="closeModal('repairResultModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field full">
+          <label>ผลการซ่อม</label>
+          <select class="filter-select" style="width:100%" id="repResult">
+            <option value="success">ซ่อมสำเร็จ — กลับมาใช้งานได้ตามปกติ</option>
+            <option value="fail">ซ่อมไม่สำเร็จ — ชำรุด ใช้งานไม่ได้</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>ค่าใช้จ่าย (บาท)</label>
+          <input type="number" min="0" step="0.01" id="repCost" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);" placeholder="0">
+        </div>
+        <div class="field">
+          <label>วันที่ได้รับคืนจากซ่อม</label>
+          <input type="date" id="repDoneDate" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+        </div>
+        <div class="field full">
+          <label>หมายเหตุผลการซ่อม</label>
+          <textarea id="repResultRemarks" rows="2" placeholder="เช่น เปลี่ยนจอใหม่ / เปลี่ยนแบตเตอรี่"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('repairResultModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="confirmRepairResult()">บันทึกผลการซ่อม</button>
     </div>
   </div>
 </div>
@@ -13625,9 +13774,7 @@ const VIEW_TITLES = {
   inspection:'ตรวจสอบ', disposal:'ส่งคืน', reports:'รายงาน', admin:'ผู้ดูแลระบบ'
 };
 const PLACEHOLDER_INFO = {
-  issue:     {ic:'↥', flow:'คลัง (IN_STOCK) → เบิกจ่าย → ครอบครอง (ASSIGNED) → ISS-YYYY-#####', desc:'จ่ายอุปกรณ์จากคลังให้บุคคล/หน่วยรับผิดชอบ พร้อมผูกผู้ครอบครองและหน่วยงาน'},
   custody:   {ic:'◇', flow:'อ้างอิงจากธุรกรรมล่าสุดของแต่ละอุปกรณ์ในทะเบียน', desc:'มุมมองสรุปอุปกรณ์ตามผู้ครอบครองปัจจุบัน ดูรายละเอียดแบบเต็มได้ที่หน้า "ทะเบียนอุปกรณ์"'},
-  repair:    {ic:'⚙', flow:'ASSIGNED/IN_STOCK → ส่งซ่อม (REPAIR) → ซ่อมสำเร็จ/ไม่สำเร็จ → REP-YYYY-#####', desc:'บันทึกอาการชำรุด ผู้รับซ่อม ผลการซ่อม และค่าใช้จ่าย'},
   inspection:{ic:'✓', flow:'ตั้งรอบตรวจ → ตรวจนับรายชิ้น → พบ/ไม่พบ/ชำรุด → INS-YYYY-#####', desc:'ตรวจนับอุปกรณ์ตามรอบ อุปกรณ์ที่ไม่พบจะถูกเปลี่ยนสถานะเป็น "สูญหาย" โดยอัตโนมัติ'},
   reports:   {ic:'▤', flow:'สรุปตามหน่วย / สถานะ / ช่วงเวลา + audit log', desc:'รายงานสรุปภาพรวมทะเบียนอุปกรณ์และประวัติการเปลี่ยนแปลงทั้งหมดในระบบ'},
   admin:     {ic:'⚑', flow:'ผู้ใช้ / บทบาท-สิทธิ์ / หน่วยงาน / ตั้งค่าระบบ', desc:'จัดการบัญชีผู้ใช้ สิทธิ์การเข้าถึง โครงสร้างหน่วยงาน และค่าคอนฟิกของระบบ'},
@@ -13648,6 +13795,8 @@ function goView(view){
   if(view==='transfer') renderTransferForm();
   if(view==='disposal'){ initBackdatedDisposalForm(); renderDisposalList(); }
   if(view==='borrow'){ initBorrowForm(); renderBorrowList(); }
+  if(view==='issue') initIssueForm();
+  if(view==='repair') initRepairForm();
   if(PLACEHOLDER_INFO[view]) renderPlaceholder(view);
 }
 
@@ -14360,6 +14509,244 @@ function returnBorrow(id){
   }, {title:'รับคืนอุปกรณ์ยืม', okLabel:'ยืนยันรับคืน'});
 }
 
+/* ---------- Issue workflow (เบิกจ่าย) ---------- */
+let issSelectedId = null;
+
+function issEligibleAssets(){
+  return ASSETS.filter(a=>a.status==='IN_STOCK');
+}
+
+function toggleIssueForm(){
+  const body = document.getElementById('issFormBody');
+  const icon = document.getElementById('issToggleIcon');
+  const show = body.style.display === 'none';
+  body.style.display = show ? 'block' : 'none';
+  icon.textContent = show ? '▾ ย่อ' : '▸ ขยาย';
+}
+
+function initIssueForm(){
+  issSelectedId = null;
+  document.getElementById('issSearch').value = '';
+  refreshReceiveDatalists();
+  renderIssSearchResults();
+  updateIssSelectedInfo();
+  renderIssRecent();
+}
+
+function onIssSearch(){ renderIssSearchResults(); }
+function clearIssSearch(){ document.getElementById('issSearch').value = ''; renderIssSearchResults(); }
+
+function renderIssSearchResults(){
+  const q = document.getElementById('issSearch').value.trim().toLowerCase();
+  const eligible = issEligibleAssets();
+  const filtered = q ? eligible.filter(a=>(a.asset_code+' '+a.serial_number+' '+a.model).toLowerCase().includes(q)) : eligible;
+  document.getElementById('issResultCount').textContent = `พบ ${filtered.length} จาก ${eligible.length} รายการในคลัง`;
+  document.getElementById('issSearchTbody').innerHTML = filtered.length
+    ? filtered.map(a=>`
+      <tr class="${a.id===issSelectedId ? 'row-selected' : ''}" onclick="selectIssAsset(${a.id})">
+        <td class="code">${a.asset_code}</td><td>${a.type}</td><td>${a.model}</td><td class="code">${a.serial_number}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="4" style="text-align:center; color:var(--text-400); padding:14px;">ไม่มีอุปกรณ์ในคลัง</td></tr>`;
+}
+
+function selectIssAsset(id){
+  issSelectedId = id;
+  renderIssSearchResults();
+  updateIssSelectedInfo();
+}
+
+function updateIssSelectedInfo(){
+  const el = document.getElementById('issSelectedInfo');
+  const a = ASSETS.find(x=>x.id===issSelectedId);
+  el.innerHTML = a
+    ? `เลือกแล้ว: <b>${a.asset_code}</b> — ${a.type} ${a.model} · S/N <span class="code">${a.serial_number}</span>`
+    : 'คลิกแถวในตารางด้านบนเพื่อเลือกอุปกรณ์ที่จะเบิกจ่าย';
+}
+
+function submitIssue(){
+  const holder = document.getElementById('issHolder').value.trim();
+  const location = document.getElementById('issLocation').value.trim();
+  const remarks = document.getElementById('issRemarks').value.trim();
+
+  if(!issSelectedId){ showToast('กรุณาเลือกอุปกรณ์จากตารางค้นหา'); return; }
+  if(!holder){ showToast('กรุณาระบุผู้รับ'); return; }
+  if(!location){ showToast('กรุณาระบุสถานที่ใช้งาน'); return; }
+
+  const a = ASSETS.find(x=>x.id===issSelectedId);
+  if(!a) return;
+
+  a.status = 'ASSIGNED';
+  a.holder = holder;
+  a.location = location;
+  if(remarks) a.remarks = a.remarks ? (a.remarks + ' — ' + remarks) : remarks;
+
+  const summary = 'ผู้รับ: ' + holder + ' · สถานที่: ' + location + (remarks ? ' · ' + remarks : '');
+  a.history.push({title:'เบิกจ่าย', doc:'ISS-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
+  syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder, location: a.location, remarks: a.remarks});
+  rememberReceiveValue('holder', holder);
+  rememberReceiveValue('location', location);
+
+  document.getElementById('issHolder').value = '';
+  document.getElementById('issLocation').value = '';
+  document.getElementById('issRemarks').value = '';
+  showToast('บันทึกการเบิกจ่าย ' + a.asset_code + ' ให้ ' + holder + ' แล้ว');
+  initIssueForm();
+  if(document.getElementById('view-registry').classList.contains('active')) renderRegistry(false);
+}
+
+function renderIssRecent(){
+  const recent = ASSETS
+    .map(a => ({ a, h: [...a.history].reverse().find(h=>h.title==='เบิกจ่าย') }))
+    .filter(x => x.h)
+    .sort((x,y) => (y.h.doc||'').localeCompare(x.h.doc||''))
+    .slice(0, 10);
+  const tbody = document.getElementById('issRecentTbody');
+  document.getElementById('issRecentEmpty').style.display = recent.length ? 'none' : 'block';
+  tbody.innerHTML = recent.map(({a,h})=>`
+    <tr onclick="openAssetModal(${a.id})">
+      <td class="code">${h.doc}</td><td class="code">${a.asset_code}</td><td>${a.model}</td><td>${a.holder}</td><td>${a.location}</td><td>${h.date}</td>
+    </tr>`).join('');
+}
+
+/* ---------- Repair workflow (ซ่อม) ---------- */
+let repSelectedId = null;
+let repResolveId = null;
+
+function repEligibleAssets(){
+  return ASSETS.filter(a=>a.status==='ASSIGNED'||a.status==='IN_STOCK');
+}
+
+function toggleRepairForm(){
+  const body = document.getElementById('repFormBody');
+  const icon = document.getElementById('repToggleIcon');
+  const show = body.style.display === 'none';
+  body.style.display = show ? 'block' : 'none';
+  icon.textContent = show ? '▾ ย่อ' : '▸ ขยาย';
+}
+
+function initRepairForm(){
+  repSelectedId = null;
+  document.getElementById('repSearch').value = '';
+  renderRepSearchResults();
+  updateRepSelectedInfo();
+  fillDatalist('repRepairerList', loadRecentValues().repairer);
+  if(!document.getElementById('repSentDate').value){
+    document.getElementById('repSentDate').value = new Date().toISOString().slice(0,10);
+  }
+  renderRepairQueue();
+}
+
+function onRepSearch(){ renderRepSearchResults(); }
+function clearRepSearch(){ document.getElementById('repSearch').value = ''; renderRepSearchResults(); }
+
+function renderRepSearchResults(){
+  const q = document.getElementById('repSearch').value.trim().toLowerCase();
+  const eligible = repEligibleAssets();
+  const filtered = q ? eligible.filter(a=>(a.asset_code+' '+a.serial_number+' '+a.model+' '+a.holder).toLowerCase().includes(q)) : eligible;
+  document.getElementById('repResultCount').textContent = `พบ ${filtered.length} จาก ${eligible.length} รายการที่ส่งซ่อมได้`;
+  document.getElementById('repSearchTbody').innerHTML = filtered.length
+    ? filtered.map(a=>`
+      <tr class="${a.id===repSelectedId ? 'row-selected' : ''}" onclick="selectRepAsset(${a.id})">
+        <td class="code">${a.asset_code}</td><td>${a.type}</td><td>${a.model}</td><td class="code">${a.serial_number}</td><td>${a.holder}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="5" style="text-align:center; color:var(--text-400); padding:14px;">ไม่พบอุปกรณ์ที่พร้อมส่งซ่อม</td></tr>`;
+}
+
+function selectRepAsset(id){
+  repSelectedId = id;
+  renderRepSearchResults();
+  updateRepSelectedInfo();
+}
+
+function updateRepSelectedInfo(){
+  const el = document.getElementById('repSelectedInfo');
+  const a = ASSETS.find(x=>x.id===repSelectedId);
+  el.innerHTML = a
+    ? `เลือกแล้ว: <b>${a.asset_code}</b> — ${a.type} ${a.model} · S/N <span class="code">${a.serial_number}</span> · ผู้ครอบครองปัจจุบัน ${a.holder}`
+    : 'คลิกแถวในตารางด้านบนเพื่อเลือกอุปกรณ์ที่จะส่งซ่อม';
+}
+
+function submitRepair(){
+  const issue = document.getElementById('repIssue').value.trim();
+  const repairer = document.getElementById('repRepairer').value.trim();
+  const sentDate = document.getElementById('repSentDate').value;
+
+  if(!repSelectedId){ showToast('กรุณาเลือกอุปกรณ์จากตารางค้นหา'); return; }
+  if(!issue){ showToast('กรุณาระบุอาการชำรุด'); return; }
+  if(!repairer){ showToast('กรุณาระบุผู้รับซ่อม'); return; }
+  if(!sentDate){ showToast('กรุณาระบุวันที่ส่งซ่อม'); return; }
+
+  const a = ASSETS.find(x=>x.id===repSelectedId);
+  if(!a) return;
+
+  a._prevStatus = a.status;
+  a._repair = {issue, repairer, sentDate};
+  a.status = 'REPAIR';
+
+  const summary = 'อาการ: ' + issue + ' · ผู้รับซ่อม: ' + repairer + ' · วันที่ส่ง: ' + sentDate;
+  a.history.push({title:'ส่งซ่อม', doc:'REP-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
+  syncUpdateToSheet(a.asset_code, {status: a.status});
+  rememberReceiveValue('repairer', repairer);
+
+  document.getElementById('repIssue').value = '';
+  document.getElementById('repRepairer').value = '';
+  showToast('ส่งซ่อม ' + a.asset_code + ' แล้ว');
+  initRepairForm();
+  if(document.getElementById('view-registry').classList.contains('active')) renderRegistry(false);
+}
+
+function renderRepairQueue(){
+  const list = ASSETS.filter(a=>a.status==='REPAIR');
+  const tbody = document.getElementById('repQueueTbody');
+  document.getElementById('repQueueEmpty').style.display = list.length ? 'none' : 'block';
+  tbody.innerHTML = list.map(a=>`
+    <tr>
+      <td class="code">${a.asset_code}</td><td>${a.model}</td>
+      <td>${a._repair ? a._repair.issue : '-'}</td>
+      <td>${a._repair ? a._repair.repairer : '-'}</td>
+      <td class="code">${a._repair ? a._repair.sentDate : '-'}</td>
+      <td><button class="btn btn-primary btn-sm" onclick="openRepairResult(${a.id})">สรุปผลการซ่อม</button></td>
+    </tr>`).join('');
+}
+
+function openRepairResult(id){
+  repResolveId = id;
+  const a = ASSETS.find(x=>x.id===id);
+  if(!a) return;
+  document.getElementById('repResultAssetCode').textContent = a.asset_code;
+  document.getElementById('repResult').value = 'success';
+  document.getElementById('repCost').value = '';
+  document.getElementById('repResultRemarks').value = '';
+  document.getElementById('repDoneDate').value = new Date().toISOString().slice(0,10);
+  openModal('repairResultModal');
+}
+
+function confirmRepairResult(){
+  const a = ASSETS.find(x=>x.id===repResolveId);
+  if(!a) return;
+  const result = document.getElementById('repResult').value;
+  const cost = document.getElementById('repCost').value.trim();
+  const doneDate = document.getElementById('repDoneDate').value;
+  const remarks = document.getElementById('repResultRemarks').value.trim();
+
+  if(!doneDate){ showToast('กรุณาระบุวันที่ได้รับคืนจากซ่อม'); return; }
+
+  const costLabel = cost ? (Number(cost).toLocaleString('th-TH') + ' บาท') : 'ไม่ระบุ';
+  const resultLabel = result === 'success' ? 'ซ่อมสำเร็จ' : 'ซ่อมไม่สำเร็จ';
+  const summary = resultLabel + ' · ค่าใช้จ่าย: ' + costLabel + ' · วันที่: ' + doneDate + (remarks ? ' · ' + remarks : '');
+
+  a.status = result === 'success' ? (a._prevStatus || 'ASSIGNED') : 'DAMAGED';
+  a.history.push({title:'สรุปผลการซ่อม', doc:'REP-2569-'+pad(LOG_SEQ++,5), meta: summary, date: doneDate});
+  syncUpdateToSheet(a.asset_code, {status: a.status});
+  delete a._repair;
+  delete a._prevStatus;
+
+  closeModal('repairResultModal');
+  renderRepairQueue();
+  if(document.getElementById('view-registry').classList.contains('active')) renderRegistry(false);
+  showToast('บันทึกผลการซ่อม ' + a.asset_code + ' แล้ว');
+}
+
 /* ---------- Transfer workflow ---------- */
 function renderTransferForm(){
   const assetSel = document.getElementById('trfAsset');
@@ -14401,7 +14788,7 @@ function renderTransferForm2Reset(){
 /* จำค่าที่เคยกรอกไว้ในเบราว์เซอร์ (localStorage) เพื่อ autofill ช่องชนิด/รุ่น/S-N/หน่วย — ยกเว้นเลขพัสดุ ทอ. */
 const RECENT_KEY = 'cams_recent_receive_values';
 function loadRecentValues(){
-  const defaults = {type:[], model:[], holder:[], location:[], serial:[], borrower:[]};
+  const defaults = {type:[], model:[], holder:[], location:[], serial:[], borrower:[], repairer:[]};
   try{ return Object.assign({}, defaults, JSON.parse(localStorage.getItem(RECENT_KEY)) || {}); }
   catch(e){ return defaults; }
 }

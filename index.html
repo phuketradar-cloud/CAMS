@@ -860,7 +860,40 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
           </div>
         </div>
       </div>
-      <div class="view" id="view-inspection"></div>
+      <!-- ===== Inspection (ตรวจสอบ) ===== -->
+      <div class="view" id="view-inspection">
+        <div class="card" id="insStartCard" style="max-width:560px;">
+          <div class="card-header"><h3>เริ่มรอบตรวจนับ (INS-)</h3></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="field full">
+                <label>ขอบเขตการตรวจ</label>
+                <select class="filter-select" style="width:100%" id="insScope">
+                  <option value="">ทั้งหมด (ทุกอุปกรณ์ที่ยังใช้งานอยู่)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer" style="position:static;">
+            <button class="btn btn-primary" onclick="startInspectionRound()">เริ่มรอบตรวจนับ</button>
+          </div>
+        </div>
+
+        <div class="card" id="insActiveCard" style="display:none;">
+          <div class="card-header"><h3 id="insRoundTitle">รอบตรวจนับ</h3></div>
+          <div class="card-body">
+            <div class="kpi-row" id="insSummaryRow" style="margin-bottom:14px;"></div>
+            <table class="data-table">
+              <thead><tr><th>เลขพัสดุ ทอ.</th><th>รุ่น/แบบ</th><th>ผู้ครอบครอง</th><th>สถานที่</th><th style="width:280px;">ผลตรวจ</th></tr></thead>
+              <tbody id="insItemsTbody"></tbody>
+            </table>
+          </div>
+          <div class="modal-footer" style="position:static;">
+            <button class="btn btn-outline" onclick="cancelInspectionRound()">ยกเลิกรอบ</button>
+            <button class="btn btn-danger" onclick="closeInspectionRound()">ปิดรอบตรวจนับ</button>
+          </div>
+        </div>
+      </div>
       <!-- ===== Reports (รายงาน) ===== -->
       <div class="view" id="view-reports">
         <div class="dash-grid" style="margin-bottom:16px;">
@@ -898,7 +931,65 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
           </div>
         </div>
       </div>
-      <div class="view" id="view-admin"></div>
+      <!-- ===== Admin (ผู้ดูแลระบบ) ===== -->
+      <div class="view" id="view-admin">
+        <div id="adminNoAccess" class="card" style="display:none;">
+          <div class="card-body">
+            <div class="placeholder-box">
+              <div class="ic">⚑</div><h3>ไม่มีสิทธิ์เข้าถึง</h3>
+              <p>หน้านี้ใช้ได้เฉพาะบทบาท SUPER_ADMIN เท่านั้น</p>
+            </div>
+          </div>
+        </div>
+        <div id="adminContent" style="display:none;">
+          <div class="card" style="max-width:640px; margin-bottom:16px;">
+            <div class="card-header" style="cursor:pointer;" onclick="toggleAdminAddForm()">
+              <h3>เพิ่มผู้ใช้ใหม่</h3>
+              <span id="adminAddToggleIcon" style="color:var(--text-400); font-size:12px;">▸ ขยาย</span>
+            </div>
+            <div id="adminAddFormBody" style="display:none;">
+              <div class="card-body">
+                <div class="form-grid">
+                  <div class="field">
+                    <label>ชื่อผู้ใช้ (username)</label>
+                    <input type="text" class="filter-select" style="width:100%" id="adminNewUsername" autocomplete="off">
+                  </div>
+                  <div class="field">
+                    <label>รหัสผ่านเริ่มต้น</label>
+                    <input type="text" class="filter-select" style="width:100%" id="adminNewPassword" autocomplete="off">
+                  </div>
+                  <div class="field">
+                    <label>ชื่อที่แสดง</label>
+                    <input type="text" class="filter-select" style="width:100%" id="adminNewDisplayName" autocomplete="off">
+                  </div>
+                  <div class="field">
+                    <label>บทบาท</label>
+                    <select class="filter-select" style="width:100%" id="adminNewRole">
+                      <option value="SUPER_ADMIN">SUPER_ADMIN — ผู้ดูแลระบบสูงสุด</option>
+                      <option value="UNIT_ADMIN">UNIT_ADMIN — ผู้ดูแลระบบหน่วย</option>
+                      <option value="OFFICER" selected>OFFICER — เจ้าหน้าที่ปฏิบัติงาน</option>
+                      <option value="APPROVER">APPROVER — ผู้อนุมัติ</option>
+                      <option value="VIEWER">VIEWER — ผู้ดูอย่างเดียว</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer" style="position:static;">
+                <button class="btn btn-primary" onclick="submitCreateUser()">เพิ่มผู้ใช้</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>ผู้ใช้งานในระบบ</h3></div>
+            <div class="card-body" style="padding:0;">
+              <table class="data-table">
+                <thead><tr><th>ชื่อผู้ใช้</th><th>ชื่อที่แสดง</th><th>บทบาท</th><th style="width:260px;">ดำเนินการ</th></tr></thead>
+                <tbody id="adminUsersTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </div>
   </div>
@@ -1058,6 +1149,26 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('returnFormModal')">ยกเลิก</button>
       <button class="btn btn-danger" onclick="confirmReturnAsset()">ยืนยันส่งคืน</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Reset Password Modal ============ -->
+<div class="modal-backdrop" id="resetPasswordModal">
+  <div class="modal w-sm">
+    <div class="modal-header">
+      <h3>ตั้งรหัสผ่านใหม่ — <span id="rstUsername" class="code"></span></h3>
+      <button class="x" onclick="closeModal('resetPasswordModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>รหัสผ่านใหม่</label>
+        <input type="text" class="filter-select" style="width:100%" id="rstNewPassword" autocomplete="off">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('resetPasswordModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="confirmResetPassword()">บันทึกรหัสผ่านใหม่</button>
     </div>
   </div>
 </div>
@@ -13861,6 +13972,8 @@ function applyRoleView(){
   document.querySelectorAll('.content .btn-primary, .content .btn-danger').forEach(b=>{
     b.style.display = viewOnly ? 'none' : '';
   });
+  const adminNav = document.querySelector('.nav-item[data-view="admin"]');
+  if(adminNav) adminNav.style.display = CURRENT_ROLE === 'SUPER_ADMIN' ? '' : 'none';
 }
 
 /* ---------- Nav ---------- */
@@ -13871,8 +13984,6 @@ const VIEW_TITLES = {
 };
 const PLACEHOLDER_INFO = {
   custody:   {ic:'◇', flow:'อ้างอิงจากธุรกรรมล่าสุดของแต่ละอุปกรณ์ในทะเบียน', desc:'มุมมองสรุปอุปกรณ์ตามผู้ครอบครองปัจจุบัน ดูรายละเอียดแบบเต็มได้ที่หน้า "ทะเบียนอุปกรณ์"'},
-  inspection:{ic:'✓', flow:'ตั้งรอบตรวจ → ตรวจนับรายชิ้น → พบ/ไม่พบ/ชำรุด → INS-YYYY-#####', desc:'ตรวจนับอุปกรณ์ตามรอบ อุปกรณ์ที่ไม่พบจะถูกเปลี่ยนสถานะเป็น "สูญหาย" โดยอัตโนมัติ'},
-  admin:     {ic:'⚑', flow:'ผู้ใช้ / บทบาท-สิทธิ์ / หน่วยงาน / ตั้งค่าระบบ', desc:'จัดการบัญชีผู้ใช้ สิทธิ์การเข้าถึง โครงสร้างหน่วยงาน และค่าคอนฟิกของระบบ'},
 };
 
 function goView(view){
@@ -13893,6 +14004,8 @@ function goView(view){
   if(view==='issue') initIssueForm();
   if(view==='repair') initRepairForm();
   if(view==='reports') renderReports();
+  if(view==='inspection') initInspectionForm();
+  if(view==='admin') initAdminPanel();
   if(PLACEHOLDER_INFO[view]) renderPlaceholder(view);
 }
 
@@ -14917,6 +15030,206 @@ function confirmRepairResult(){
   renderRepairQueue();
   if(document.getElementById('view-registry').classList.contains('active')) renderRegistry(false);
   showToast('บันทึกผลการซ่อม ' + a.asset_code + ' แล้ว');
+}
+
+/* ---------- Inspection workflow (ตรวจสอบ) ---------- */
+let INSPECTION_ROUND = null;
+
+function inspectionEligibleAssets(){
+  return ASSETS.filter(a=>a.status!=='DISPOSAL'&&a.status!=='DISPOSED');
+}
+
+function initInspectionForm(){
+  if(INSPECTION_ROUND){
+    renderInspectionRound();
+    return;
+  }
+  document.getElementById('insStartCard').style.display = 'block';
+  document.getElementById('insActiveCard').style.display = 'none';
+  const scopeSel = document.getElementById('insScope');
+  const locations = [...new Set(inspectionEligibleAssets().map(a=>a.location).filter(l=>l && l!=='-'))].sort();
+  scopeSel.innerHTML = `<option value="">ทั้งหมด (ทุกอุปกรณ์ที่ยังใช้งานอยู่)</option>` +
+    locations.map(l=>`<option value="${l}">เฉพาะสถานที่: ${l}</option>`).join('');
+}
+
+function startInspectionRound(){
+  const scope = document.getElementById('insScope').value;
+  const eligible = inspectionEligibleAssets().filter(a => !scope || a.location === scope);
+  if(eligible.length === 0){ showToast('ไม่มีอุปกรณ์ในขอบเขตที่เลือก'); return; }
+  INSPECTION_ROUND = {
+    doc: 'INS-2569-'+pad(LOG_SEQ++,5),
+    scopeLabel: scope || 'ทั้งหมด',
+    startedAt: new Date().toISOString().slice(0,10),
+    items: eligible.map(a=>({assetId: a.id, result: null})),
+  };
+  renderInspectionRound();
+  showToast('เริ่มรอบตรวจนับแล้ว (' + eligible.length + ' รายการ)');
+}
+
+function renderInspectionRound(){
+  document.getElementById('insStartCard').style.display = 'none';
+  document.getElementById('insActiveCard').style.display = 'block';
+  document.getElementById('insRoundTitle').textContent = 'รอบตรวจนับ ' + INSPECTION_ROUND.doc + ' — ขอบเขต: ' + INSPECTION_ROUND.scopeLabel;
+
+  const counts = {found:0, not_found:0, damaged:0, pending:0};
+  INSPECTION_ROUND.items.forEach(it=>{
+    if(it.result==='found') counts.found++;
+    else if(it.result==='not_found') counts.not_found++;
+    else if(it.result==='damaged') counts.damaged++;
+    else counts.pending++;
+  });
+  document.getElementById('insSummaryRow').innerHTML = `
+    <div class="kpi-card accent-green"><div class="val">${counts.found}</div><div class="lbl">พบ</div></div>
+    <div class="kpi-card accent-amber"><div class="val">${counts.damaged}</div><div class="lbl">ชำรุด</div></div>
+    <div class="kpi-card accent-red"><div class="val">${counts.not_found}</div><div class="lbl">ไม่พบ</div></div>
+    <div class="kpi-card accent-steel"><div class="val">${counts.pending}</div><div class="lbl">ยังไม่ตรวจ</div></div>
+  `;
+
+  document.getElementById('insItemsTbody').innerHTML = INSPECTION_ROUND.items.map(it=>{
+    const a = ASSETS.find(x=>x.id===it.assetId);
+    if(!a) return '';
+    return `
+    <tr>
+      <td class="code">${a.asset_code}</td><td>${a.model}</td><td>${a.holder}</td><td>${a.location}</td>
+      <td>
+        <button class="btn btn-sm ${it.result==='found' ? 'btn-primary' : 'btn-outline'}" onclick="setInspectionResult(${a.id},'found')">พบ</button>
+        <button class="btn btn-sm ${it.result==='damaged' ? 'btn-steel' : 'btn-outline'}" onclick="setInspectionResult(${a.id},'damaged')">ชำรุด</button>
+        <button class="btn btn-sm ${it.result==='not_found' ? 'btn-danger' : 'btn-outline'}" onclick="setInspectionResult(${a.id},'not_found')">ไม่พบ</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function setInspectionResult(assetId, result){
+  const item = INSPECTION_ROUND.items.find(it=>it.assetId===assetId);
+  if(item) item.result = item.result === result ? null : result;
+  renderInspectionRound();
+}
+
+function cancelInspectionRound(){
+  showConfirm('ยกเลิกรอบตรวจนับนี้ใช่หรือไม่? ผลตรวจที่บันทึกไว้จะหายไป', function(){
+    INSPECTION_ROUND = null;
+    initInspectionForm();
+    showToast('ยกเลิกรอบตรวจนับแล้ว');
+  }, {title:'ยกเลิกรอบตรวจนับ', okLabel:'ยกเลิกรอบ', danger:true});
+}
+
+function closeInspectionRound(){
+  const pending = INSPECTION_ROUND.items.filter(it=>!it.result).length;
+  const notFound = INSPECTION_ROUND.items.filter(it=>it.result==='not_found').length;
+  const damaged = INSPECTION_ROUND.items.filter(it=>it.result==='damaged').length;
+  const msg = `ปิดรอบตรวจนับ <b>${INSPECTION_ROUND.doc}</b> ใช่หรือไม่?<br>` +
+    (pending ? `<b style="color:var(--red-500)">${pending} รายการยังไม่ได้ตรวจ จะถือว่า "ไม่พบ" โดยอัตโนมัติ</b><br>` : '') +
+    `รายการ "ไม่พบ" (${notFound + pending}) จะเปลี่ยนสถานะเป็น <b>สูญหาย</b><br>` +
+    `รายการ "ชำรุด" (${damaged}) จะเปลี่ยนสถานะเป็น <b>ชำรุด</b>`;
+  showConfirm(msg, function(){
+    const doc = INSPECTION_ROUND.doc, scopeLabel = INSPECTION_ROUND.scopeLabel, startedAt = INSPECTION_ROUND.startedAt;
+    INSPECTION_ROUND.items.forEach(it=>{
+      const a = ASSETS.find(x=>x.id===it.assetId);
+      if(!a) return;
+      const result = it.result || 'not_found';
+      const resultLabel = {found:'พบ', not_found:'ไม่พบ', damaged:'พบแต่ชำรุด'}[result];
+      a.history.push({title:'ตรวจนับ: ' + resultLabel, doc: doc, meta:'รอบตรวจ: ' + scopeLabel + ' · โดย ' + actorLabel(), date: startedAt});
+      if(result === 'not_found'){
+        a.status = 'LOST';
+        syncUpdateToSheet(a.asset_code, {status:'LOST'});
+      } else if(result === 'damaged'){
+        a.status = 'DAMAGED';
+        syncUpdateToSheet(a.asset_code, {status:'DAMAGED'});
+      }
+    });
+    showToast('ปิดรอบตรวจนับ ' + doc + ' สำเร็จ');
+    INSPECTION_ROUND = null;
+    initInspectionForm();
+    if(document.getElementById('view-registry').classList.contains('active')) renderRegistry(false);
+  }, {title:'ปิดรอบตรวจนับ', okLabel:'ยืนยันปิดรอบ', danger:true});
+}
+
+/* ---------- Admin (ผู้ดูแลระบบ) — user management ---------- */
+const ADMIN_ROLE_OPTIONS = ['SUPER_ADMIN','UNIT_ADMIN','OFFICER','APPROVER','VIEWER'];
+let resetPasswordTarget = null;
+
+function initAdminPanel(){
+  const hasAccess = CURRENT_ROLE === 'SUPER_ADMIN';
+  document.getElementById('adminNoAccess').style.display = hasAccess ? 'none' : 'block';
+  document.getElementById('adminContent').style.display = hasAccess ? 'block' : 'none';
+  if(hasAccess) loadUserList();
+}
+
+function toggleAdminAddForm(){
+  const body = document.getElementById('adminAddFormBody');
+  const icon = document.getElementById('adminAddToggleIcon');
+  const show = body.style.display === 'none';
+  body.style.display = show ? 'block' : 'none';
+  icon.textContent = show ? '▾ ย่อ' : '▸ ขยาย';
+}
+
+async function loadUserList(){
+  const result = await postToSheet({ action:'list_users' }, 'โหลดรายชื่อผู้ใช้ไม่สำเร็จ');
+  if(!result.ok) return;
+  renderUserList(result.users || []);
+}
+
+function renderUserList(users){
+  document.getElementById('adminUsersTbody').innerHTML = users.map(u=>`
+    <tr>
+      <td class="code">${u.username}</td><td>${u.display_name}</td>
+      <td>
+        <select class="filter-select" onchange="changeUserRole('${u.username}', this.value)">
+          ${ADMIN_ROLE_OPTIONS.map(r=>`<option value="${r}" ${r===u.role?'selected':''}>${r}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openResetPassword('${u.username}')">รีเซ็ตรหัสผ่าน</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.username}')">ลบ</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function submitCreateUser(){
+  const username = document.getElementById('adminNewUsername').value.trim();
+  const password = document.getElementById('adminNewPassword').value;
+  const displayName = document.getElementById('adminNewDisplayName').value.trim();
+  const role = document.getElementById('adminNewRole').value;
+
+  if(!username || !password || !displayName){ showToast('กรุณากรอกข้อมูลให้ครบ'); return; }
+
+  const result = await postToSheet({ action:'create_user', username, password, display_name: displayName, role }, 'เพิ่มผู้ใช้ไม่สำเร็จ');
+  if(!result.ok) return;
+
+  showToast('เพิ่มผู้ใช้ ' + username + ' สำเร็จ');
+  document.getElementById('adminNewUsername').value = '';
+  document.getElementById('adminNewPassword').value = '';
+  document.getElementById('adminNewDisplayName').value = '';
+  loadUserList();
+}
+
+async function changeUserRole(username, role){
+  const result = await postToSheet({ action:'update_user', username, role }, 'เปลี่ยนบทบาทไม่สำเร็จ');
+  if(result.ok) showToast('เปลี่ยนบทบาทของ ' + username + ' เป็น ' + role + ' แล้ว');
+  loadUserList();
+}
+
+function openResetPassword(username){
+  resetPasswordTarget = username;
+  document.getElementById('rstUsername').textContent = username;
+  document.getElementById('rstNewPassword').value = '';
+  openModal('resetPasswordModal');
+}
+
+async function confirmResetPassword(){
+  const password = document.getElementById('rstNewPassword').value;
+  if(!password){ showToast('กรุณากรอกรหัสผ่านใหม่'); return; }
+  const result = await postToSheet({ action:'update_user', username: resetPasswordTarget, password }, 'ตั้งรหัสผ่านใหม่ไม่สำเร็จ');
+  if(result.ok){ showToast('ตั้งรหัสผ่านใหม่ให้ ' + resetPasswordTarget + ' สำเร็จ'); closeModal('resetPasswordModal'); }
+}
+
+function deleteUser(username){
+  showConfirm(`ลบผู้ใช้ <b>${username}</b> ถาวรใช่หรือไม่?`, async function(){
+    const result = await postToSheet({ action:'delete_user', username }, 'ลบผู้ใช้ไม่สำเร็จ');
+    if(result.ok) showToast('ลบผู้ใช้ ' + username + ' แล้ว');
+    loadUserList();
+  }, {title:'ลบผู้ใช้', okLabel:'ลบถาวร', danger:true});
 }
 
 /* ---------- Transfer workflow ---------- */

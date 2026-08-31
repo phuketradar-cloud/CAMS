@@ -13443,11 +13443,16 @@ function pad(n,len){ return String(n).padStart(len,'0'); }
 
 /* ---------- Google Sheet data source (read+write via Apps Script Web App) ---------- */
 const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzMb4DSBPyMWpkr3--a80RgN1qLfoc2SXDUu143BLAUcWzO3KTjQmJSRCroEApLtF-KHQ/exec';
+const SHEET_API_TOKEN = 'a367042542e0b2d78ad017c9738b5bcb0a6f46d8';
 
 async function loadAssetsFromSheet(){
   try{
-    const res = await fetch(SHEET_API_URL);
+    const res = await fetch(SHEET_API_URL + '?token=' + encodeURIComponent(SHEET_API_TOKEN));
     const rows = await res.json();
+    if(!Array.isArray(rows)){
+      showToast('โหลดข้อมูลจาก Google Sheet ไม่สำเร็จ: ' + (rows && rows.error ? rows.error : 'unauthorized'));
+      return;
+    }
     ASSETS = rows.map((r, idx) => ({
       id: idx + 1,
       asset_code: r.asset_code,
@@ -13472,71 +13477,47 @@ async function loadAssetsFromSheet(){
   }
 }
 
-async function syncAddToSheet(asset){
+async function postToSheet(payload, errPrefix){
   try{
-    await fetch(SHEET_API_URL, {
+    const res = await fetch(SHEET_API_URL, {
       method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action:'add', asset:{
-        asset_code: asset.asset_code, serial_number: asset.serial_number, model: asset.model,
-        category: asset.category, type: asset.type, status: asset.status, unit: asset.unit,
-        holder: asset.holder, location: asset.location, acquired_date: asset.acquired_date, remarks: asset.remarks,
-      }}),
+      body: JSON.stringify(Object.assign({ token: SHEET_API_TOKEN }, payload)),
     });
+    const result = await res.json();
+    if(!result.ok) showToast(errPrefix + ': ' + (result.error || 'unauthorized'));
+    return result;
   }catch(e){
-    showToast('ซิงก์ไป Google Sheet ไม่สำเร็จ: ' + e.message);
+    showToast(errPrefix + ': ' + e.message);
+    return { ok:false, error: e.message };
   }
+}
+
+async function syncAddToSheet(asset){
+  await postToSheet({ action:'add', asset:{
+    asset_code: asset.asset_code, serial_number: asset.serial_number, model: asset.model,
+    category: asset.category, type: asset.type, status: asset.status, unit: asset.unit,
+    holder: asset.holder, location: asset.location, acquired_date: asset.acquired_date, remarks: asset.remarks,
+  }}, 'ซิงก์ไป Google Sheet ไม่สำเร็จ');
 }
 
 async function syncUpdateToSheet(assetCode, patch){
-  try{
-    await fetch(SHEET_API_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action:'update', asset_code: assetCode, patch: patch }),
-    });
-  }catch(e){
-    showToast('ซิงก์ไป Google Sheet ไม่สำเร็จ: ' + e.message);
-  }
+  await postToSheet({ action:'update', asset_code: assetCode, patch: patch }, 'ซิงก์ไป Google Sheet ไม่สำเร็จ');
 }
 
 async function syncDeleteToSheet(assetCode){
-  try{
-    await fetch(SHEET_API_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action:'delete', asset_code: assetCode }),
-    });
-  }catch(e){
-    showToast('ซิงก์ไป Google Sheet ไม่สำเร็จ: ' + e.message);
-  }
+  await postToSheet({ action:'delete', asset_code: assetCode }, 'ซิงก์ไป Google Sheet ไม่สำเร็จ');
 }
 
 async function uploadImageToSheet(assetCode, filename, dataUrl){
-  try{
-    const base64 = dataUrl.split(',')[1];
-    const mimeMatch = dataUrl.match(/^data:([^;]+);/);
-    const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-    await fetch(SHEET_API_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action:'upload_image', asset_code: assetCode, filename: filename, mimeType: mimeType, data: base64 }),
-    });
-  }catch(e){
-    showToast('อัปโหลดภาพไป Google Drive ไม่สำเร็จ: ' + e.message);
-  }
+  const base64 = dataUrl.split(',')[1];
+  const mimeMatch = dataUrl.match(/^data:([^;]+);/);
+  const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  return postToSheet({ action:'upload_image', asset_code: assetCode, filename: filename, mimeType: mimeType, data: base64 }, 'อัปโหลดภาพไป Google Drive ไม่สำเร็จ');
 }
 
 async function syncDeleteImageFromSheet(assetCode, url){
-  try{
-    await fetch(SHEET_API_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action:'delete_image', asset_code: assetCode, url: url }),
-    });
-  }catch(e){
-    showToast('ลบภาพจาก Google Drive ไม่สำเร็จ: ' + e.message);
-  }
+  await postToSheet({ action:'delete_image', asset_code: assetCode, url: url }, 'ลบภาพจาก Google Drive ไม่สำเร็จ');
 }
 
 function deleteAsset(id){

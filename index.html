@@ -861,7 +861,43 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
         </div>
       </div>
       <div class="view" id="view-inspection"></div>
-      <div class="view" id="view-reports"></div>
+      <!-- ===== Reports (รายงาน) ===== -->
+      <div class="view" id="view-reports">
+        <div class="dash-grid" style="margin-bottom:16px;">
+          <div class="card">
+            <div class="card-header"><h3>แยกตามสถานะ</h3></div>
+            <div class="card-body" id="repByStatus"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>แยกตามชนิดอุปกรณ์</h3></div>
+            <div class="card-body" id="repByType"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>แยกตามสถานที่ใช้งาน</h3></div>
+          <div class="card-body" id="repByLocation"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>ประวัติการทำรายการทั้งหมด (Audit Log)</h3></div>
+          <div class="card-body">
+            <div class="toolbar">
+              <div class="search-box" id="repLogSearchBox">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="repLogSearch" placeholder="ค้นหา: เลขพัสดุ ทอ. / เลขที่เอกสาร / รายละเอียด" oninput="onRepLogFilter()">
+                <button class="clear-btn" onclick="clearRepLogSearch()">✕</button>
+              </div>
+              <select class="filter-select" id="repLogTypeFilter" onchange="onRepLogFilter()">
+                <option value="">ประเภทเอกสารทั้งหมด</option>
+              </select>
+            </div>
+            <div class="result-count" id="repLogResultCount"></div>
+            <table class="data-table">
+              <thead><tr><th>วันที่</th><th>เลขที่เอกสาร</th><th>การดำเนินการ</th><th>เลขพัสดุ ทอ.</th><th>รายละเอียด</th></tr></thead>
+              <tbody id="repLogTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       <div class="view" id="view-admin"></div>
 
     </div>
@@ -13709,7 +13745,7 @@ function saveAssetEdit(){
   a.holder = holder || '(อยู่ในคลัง)';
   a.location = location || '-';
   a.remarks = remarks;
-  a.history.push({title:'แก้ไขข้อมูลอุปกรณ์', doc:'-', meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
+  a.history.push({title:'แก้ไขข้อมูลอุปกรณ์', doc:'-', meta:'โดย ' + actorLabel(), date:'วันนี้'});
 
   syncUpdateToSheet(a.asset_code, {
     type: a.type, model: a.model, category: a.category, serial_number: a.serial_number,
@@ -13739,6 +13775,7 @@ const SESSION_STORAGE_KEY = 'cams_session';
 let CURRENT_ROLE = null;
 let CURRENT_USER = null;
 let CURRENT_DISPLAY_NAME = null;
+function actorLabel(){ return CURRENT_DISPLAY_NAME || CURRENT_ROLE || 'ไม่ทราบผู้ใช้'; }
 
 function saveSession_(){
   try{ sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
@@ -13835,7 +13872,6 @@ const VIEW_TITLES = {
 const PLACEHOLDER_INFO = {
   custody:   {ic:'◇', flow:'อ้างอิงจากธุรกรรมล่าสุดของแต่ละอุปกรณ์ในทะเบียน', desc:'มุมมองสรุปอุปกรณ์ตามผู้ครอบครองปัจจุบัน ดูรายละเอียดแบบเต็มได้ที่หน้า "ทะเบียนอุปกรณ์"'},
   inspection:{ic:'✓', flow:'ตั้งรอบตรวจ → ตรวจนับรายชิ้น → พบ/ไม่พบ/ชำรุด → INS-YYYY-#####', desc:'ตรวจนับอุปกรณ์ตามรอบ อุปกรณ์ที่ไม่พบจะถูกเปลี่ยนสถานะเป็น "สูญหาย" โดยอัตโนมัติ'},
-  reports:   {ic:'▤', flow:'สรุปตามหน่วย / สถานะ / ช่วงเวลา + audit log', desc:'รายงานสรุปภาพรวมทะเบียนอุปกรณ์และประวัติการเปลี่ยนแปลงทั้งหมดในระบบ'},
   admin:     {ic:'⚑', flow:'ผู้ใช้ / บทบาท-สิทธิ์ / หน่วยงาน / ตั้งค่าระบบ', desc:'จัดการบัญชีผู้ใช้ สิทธิ์การเข้าถึง โครงสร้างหน่วยงาน และค่าคอนฟิกของระบบ'},
 };
 
@@ -13856,6 +13892,7 @@ function goView(view){
   if(view==='borrow'){ initBorrowForm(); renderBorrowList(); }
   if(view==='issue') initIssueForm();
   if(view==='repair') initRepairForm();
+  if(view==='reports') renderReports();
   if(PLACEHOLDER_INFO[view]) renderPlaceholder(view);
 }
 
@@ -13967,13 +14004,13 @@ function openKpiBreakdown(statusCodes, label){
   })).sort((x,y)=>y.count-x.count);
   html += `<div class="bd-section"><h4>แยกตามชนิดอุปกรณ์ (หมวดหมู่)</h4>${bdRowsHtml(catGroups, total)}</div>`;
 
-  const byUnit = {};
-  filtered.forEach(a=>{ byUnit[a.unit] = (byUnit[a.unit]||0) + 1; });
-  const unitGroups = Object.keys(byUnit).map(u=>({
-    label: u, count: byUnit[u],
-    onclickJs: `jumpToRegistryFiltered({unit:'${u}'${singleStatus ? `, status:'${singleStatus}'` : ''}})`,
+  const byLocation = {};
+  filtered.forEach(a=>{ const loc = a.location || '(ไม่ระบุ)'; byLocation[loc] = (byLocation[loc]||0) + 1; });
+  const locationGroups = Object.keys(byLocation).map(loc=>({
+    label: loc, count: byLocation[loc],
+    onclickJs: `jumpToRegistryFiltered({unit:'${loc}'${singleStatus ? `, status:'${singleStatus}'` : ''}})`,
   })).sort((x,y)=>y.count-x.count);
-  html += `<div class="bd-section"><h4>แยกตามหน่วย</h4>${bdRowsHtml(unitGroups, total)}</div>`;
+  html += `<div class="bd-section"><h4>แยกตามสถานที่ใช้งาน</h4>${bdRowsHtml(locationGroups, total)}</div>`;
 
   document.getElementById('bdBody').innerHTML = html;
   document.getElementById('bdViewAllBtn').onclick = function(){
@@ -13991,6 +14028,82 @@ function jumpToRegistryFiltered(opts){
   document.getElementById('regUnitFilter').value = opts.unit || '';
   document.getElementById('regSearch').value = opts.search || '';
   onRegistryFilter();
+}
+
+/* ---------- Reports (รายงาน + audit log) ---------- */
+let AUDIT_LOG_CACHE = [];
+
+function auditSeq_(doc){
+  const m = doc && String(doc).match(/(\d+)$/);
+  return m ? parseInt(m[1], 10) : -1;
+}
+
+function buildAuditLog_(){
+  const entries = [];
+  ASSETS.forEach(a=>{
+    a.history.forEach(h=>{
+      entries.push({ date: h.date, doc: h.doc, title: h.title, asset_code: a.asset_code, meta: h.meta });
+    });
+  });
+  entries.sort((x,y) => auditSeq_(y.doc) - auditSeq_(x.doc));
+  return entries;
+}
+
+function renderReports(){
+  const total = ASSETS.length;
+
+  const byStatus = {};
+  ASSETS.forEach(a=>{ byStatus[a.status] = (byStatus[a.status]||0) + 1; });
+  const statusGroups = Object.keys(byStatus).map(code=>({
+    label: STATUS_META[code].label, count: byStatus[code], dot: statusDotColor(code),
+    onclickJs: `jumpToRegistryFiltered({status:'${code}'})`,
+  })).sort((x,y)=>y.count-x.count);
+  document.getElementById('repByStatus').innerHTML = bdRowsHtml(statusGroups, total);
+
+  const byType = {};
+  ASSETS.forEach(a=>{ byType[a.type] = (byType[a.type]||0) + 1; });
+  const typeGroups = Object.keys(byType).map(t=>({
+    label: t, count: byType[t],
+    onclickJs: `jumpToRegistryFiltered({type:'${t}'})`,
+  })).sort((x,y)=>y.count-x.count);
+  document.getElementById('repByType').innerHTML = bdRowsHtml(typeGroups, total);
+
+  const byLocation = {};
+  ASSETS.forEach(a=>{ const loc = a.location || '(ไม่ระบุ)'; byLocation[loc] = (byLocation[loc]||0) + 1; });
+  const locationGroups = Object.keys(byLocation).map(loc=>({
+    label: loc, count: byLocation[loc],
+    onclickJs: `jumpToRegistryFiltered({unit:'${loc}'})`,
+  })).sort((x,y)=>y.count-x.count);
+  document.getElementById('repByLocation').innerHTML = bdRowsHtml(locationGroups, total);
+
+  AUDIT_LOG_CACHE = buildAuditLog_();
+  document.getElementById('repLogSearch').value = '';
+  const typeSel = document.getElementById('repLogTypeFilter');
+  const prefixes = [...new Set(AUDIT_LOG_CACHE.map(e => (e.doc||'').split('-')[0]).filter(p=>p && p!=='-'))].sort();
+  typeSel.innerHTML = `<option value="">ประเภทเอกสารทั้งหมด</option>` + prefixes.map(p=>`<option value="${p}">${p}-</option>`).join('');
+  renderAuditLog();
+}
+
+function onRepLogFilter(){ renderAuditLog(); }
+function clearRepLogSearch(){ document.getElementById('repLogSearch').value = ''; renderAuditLog(); }
+
+function renderAuditLog(){
+  const q = document.getElementById('repLogSearch').value.trim().toLowerCase();
+  const prefixF = document.getElementById('repLogTypeFilter').value;
+  const filtered = AUDIT_LOG_CACHE.filter(e=>{
+    if(prefixF && (e.doc||'').split('-')[0] !== prefixF) return false;
+    if(q){
+      const hay = (e.asset_code+' '+(e.doc||'')+' '+e.title+' '+(e.meta||'')).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  document.getElementById('repLogResultCount').textContent = `พบ ${filtered.length} จาก ${AUDIT_LOG_CACHE.length} รายการ`;
+  document.getElementById('repLogTbody').innerHTML = filtered.map(e=>`
+    <tr>
+      <td class="code">${e.date || '-'}</td><td class="code">${e.doc || '-'}</td><td>${e.title}</td>
+      <td class="code">${e.asset_code}</td><td>${e.meta || ''}</td>
+    </tr>`).join('');
 }
 
 /* ---------- Registry ---------- */
@@ -14265,7 +14378,7 @@ function confirmReturnAsset(){
   if(!recipient){ showToast('กรุณาระบุผู้รับคืน'); return; }
 
   const dateLabel = datetimeVal.replace('T', ' ');
-  const summary = 'สาเหตุ: ' + reason + ' · ผู้รับคืน: ' + recipient + ' · เวลา: ' + dateLabel;
+  const summary = 'สาเหตุ: ' + reason + ' · ผู้รับคืน: ' + recipient + ' · เวลา: ' + dateLabel + ' · โดย ' + actorLabel();
 
   a._prevStatus = a.status;
   a.status = 'DISPOSAL';
@@ -14315,7 +14428,7 @@ function submitBackdatedDisposal(){
       existing.status = 'DISPOSED';
       existing._prevStatus = null;
       existing.remarks = remarks ? (existing.remarks ? existing.remarks + ' — ' : '') + remarks : existing.remarks;
-      existing.history.push({title:'ส่งคืนย้อนหลัง', doc: doc, meta:'โดย ' + CURRENT_ROLE + (remarks ? ' — ' + remarks : ''), date: date});
+      existing.history.push({title:'ส่งคืนย้อนหลัง', doc: doc, meta:'โดย ' + actorLabel() + (remarks ? ' — ' + remarks : ''), date: date});
       syncUpdateToSheet(existing.asset_code, {status:'DISPOSED', remarks: existing.remarks});
       showToast('บันทึกส่งคืนย้อนหลัง ' + code + ' สำเร็จ');
     } else {
@@ -14335,7 +14448,7 @@ function submitBackdatedDisposal(){
         remarks: remarks,
         attachments: [],
         history: [
-          {title:'ส่งคืนย้อนหลัง (บันทึกใหม่)', doc: doc, meta:'โดย ' + CURRENT_ROLE + (remarks ? ' — ' + remarks : ''), date: date},
+          {title:'ส่งคืนย้อนหลัง (บันทึกใหม่)', doc: doc, meta:'โดย ' + actorLabel() + (remarks ? ' — ' + remarks : ''), date: date},
         ],
       };
       ASSETS.push(newAsset);
@@ -14375,7 +14488,7 @@ function undoDisposal(id){
     a.status = a._prevStatus;
     a._prevStatus = null;
     syncUpdateToSheet(a.asset_code, {status: a.status});
-    a.history.push({title:'ย้อนกลับการเสนอส่งคืน', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
+    a.history.push({title:'ย้อนกลับการเสนอส่งคืน', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + actorLabel(), date:'วันนี้'});
     renderDisposalList();
     renderRegistry(false);
     showToast('ย้อนกลับสถานะ ' + a.asset_code + ' แล้ว');
@@ -14388,7 +14501,7 @@ function finalizeDisposal(id){
     a.status = 'DISPOSED';
     a._prevStatus = null;
     syncUpdateToSheet(a.asset_code, {status: a.status});
-    a.history.push({title:'ส่งคืนถาวร', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE, date:'วันนี้'});
+    a.history.push({title:'ส่งคืนถาวร', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + actorLabel(), date:'วันนี้'});
     renderDisposalList();
     renderRegistry(false);
     showToast('ส่งคืนอุปกรณ์ ' + a.asset_code + ' ถาวรแล้ว');
@@ -14419,7 +14532,7 @@ function doBorrowAsset(a, borrower, dueDate, remarks){
   a.holder = borrower;
   a.status = 'BORROWED';
 
-  const summary = 'ผู้ยืม: ' + borrower + ' · กำหนดคืน: ' + dueDate + (remarks ? ' · ' + remarks : '');
+  const summary = 'ผู้ยืม: ' + borrower + ' · กำหนดคืน: ' + dueDate + (remarks ? ' · ' + remarks : '') + ' · บันทึกโดย ' + actorLabel();
   a.history.push({title:'ยืมอุปกรณ์', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
   syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder});
   rememberReceiveValue('borrower', borrower);
@@ -14556,7 +14669,7 @@ function returnBorrow(id){
   showConfirm(`ยืนยันรับคืน <b>${a.asset_code}</b> จาก <b>${borrower}</b> ใช่หรือไม่? <br>ผู้ครอบครองจะกลับเป็น <b>${backTo}</b>`, function(){
     a.holder = a._prevHolder || a.holder;
     a.status = a._prevStatus || 'ASSIGNED';
-    a.history.push({title:'รับคืนอุปกรณ์ยืม', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta:'รับคืนจาก ' + borrower + ' · กลับสู่ ' + a.holder, date:'วันนี้'});
+    a.history.push({title:'รับคืนอุปกรณ์ยืม', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta:'รับคืนจาก ' + borrower + ' · กลับสู่ ' + a.holder + ' · โดย ' + actorLabel(), date:'วันนี้'});
     syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder});
     delete a._borrow;
     delete a._prevHolder;
@@ -14639,7 +14752,7 @@ function submitIssue(){
   a.location = location;
   if(remarks) a.remarks = a.remarks ? (a.remarks + ' — ' + remarks) : remarks;
 
-  const summary = 'ผู้รับ: ' + holder + ' · สถานที่: ' + location + (remarks ? ' · ' + remarks : '');
+  const summary = 'ผู้รับ: ' + holder + ' · สถานที่: ' + location + (remarks ? ' · ' + remarks : '') + ' · โดย ' + actorLabel();
   a.history.push({title:'เบิกจ่าย', doc:'ISS-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
   syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder, location: a.location, remarks: a.remarks});
   rememberReceiveValue('holder', holder);
@@ -14742,7 +14855,7 @@ function submitRepair(){
   a._repair = {issue, repairer, sentDate};
   a.status = 'REPAIR';
 
-  const summary = 'อาการ: ' + issue + ' · ผู้รับซ่อม: ' + repairer + ' · วันที่ส่ง: ' + sentDate;
+  const summary = 'อาการ: ' + issue + ' · ผู้รับซ่อม: ' + repairer + ' · วันที่ส่ง: ' + sentDate + ' · โดย ' + actorLabel();
   a.history.push({title:'ส่งซ่อม', doc:'REP-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
   syncUpdateToSheet(a.asset_code, {status: a.status});
   rememberReceiveValue('repairer', repairer);
@@ -14792,7 +14905,7 @@ function confirmRepairResult(){
 
   const costLabel = cost ? (Number(cost).toLocaleString('th-TH') + ' บาท') : 'ไม่ระบุ';
   const resultLabel = result === 'success' ? 'ซ่อมสำเร็จ' : 'ซ่อมไม่สำเร็จ';
-  const summary = resultLabel + ' · ค่าใช้จ่าย: ' + costLabel + ' · วันที่: ' + doneDate + (remarks ? ' · ' + remarks : '');
+  const summary = resultLabel + ' · ค่าใช้จ่าย: ' + costLabel + ' · วันที่: ' + doneDate + (remarks ? ' · ' + remarks : '') + ' · โดย ' + actorLabel();
 
   a.status = result === 'success' ? (a._prevStatus || 'ASSIGNED') : 'DAMAGED';
   a.history.push({title:'สรุปผลการซ่อม', doc:'REP-2569-'+pad(LOG_SEQ++,5), meta: summary, date: doneDate});
@@ -14830,7 +14943,7 @@ function submitTransfer(){
   showConfirm(`ยืนยันโอน <b>${a.asset_code}</b> ไปยัง <b>${holder}</b> (${unit}) ใช่หรือไม่?`, function(){
     a.unit = unit; a.holder = holder; a.status = 'ASSIGNED';
     syncUpdateToSheet(a.asset_code, {unit: a.unit, holder: a.holder, status: a.status});
-    a.history.push({title:'โอนอุปกรณ์ไปยัง ' + holder + ' (' + unit + ')', doc:'TRF-2569-'+pad(LOG_SEQ++,5), meta:(remarks||'ไม่มีหมายเหตุ'), date:'วันนี้'});
+    a.history.push({title:'โอนอุปกรณ์ไปยัง ' + holder + ' (' + unit + ')', doc:'TRF-2569-'+pad(LOG_SEQ++,5), meta:(remarks||'ไม่มีหมายเหตุ') + ' · โดย ' + actorLabel(), date:'วันนี้'});
     document.getElementById('trfRemarks').value='';
     renderTransferForm2Reset();
     renderRegistry(false);
@@ -14960,7 +15073,7 @@ function submitReceive(){
     remarks: remarks,
     attachments: rcvAttachments,
     history: [
-      {title:'รับเข้าคลัง', doc:'REC-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + CURRENT_ROLE + (remarks ? ' — ' + remarks : ''), date:'วันนี้'},
+      {title:'รับเข้าคลัง', doc:'REC-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + actorLabel() + (remarks ? ' — ' + remarks : ''), date:'วันนี้'},
     ],
   };
   ASSETS.push(newAsset);

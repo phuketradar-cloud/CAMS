@@ -398,20 +398,11 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
     </div>
     <div class="field">
       <label>รหัสผ่าน</label>
-      <input type="password" id="loginPassword" autocomplete="off">
-    </div>
-    <div class="field">
-      <label>บทบาท (สำหรับสาธิตต้นแบบ)</label>
-      <select id="loginRole">
-        <option value="SUPER_ADMIN">SUPER_ADMIN — ผู้ดูแลระบบสูงสุด</option>
-        <option value="UNIT_ADMIN">UNIT_ADMIN — ผู้ดูแลระบบหน่วย</option>
-        <option value="OFFICER" selected>OFFICER — เจ้าหน้าที่ปฏิบัติงาน</option>
-        <option value="APPROVER">APPROVER — ผู้อนุมัติ</option>
-        <option value="VIEWER">VIEWER — ผู้ดูอย่างเดียว</option>
-      </select>
+      <input type="password" id="loginPassword" autocomplete="off" onkeydown="if(event.key==='Enter') doLogin()">
     </div>
     <button class="btn btn-primary btn-block" onclick="doLogin()">เข้าสู่ระบบ</button>
-    <div class="login-foot">ต้นแบบสาธิต — ไม่มีการยืนยันตัวตนจริง เลือกบทบาทเพื่อจำลองมุมมองผู้ใช้</div>
+    <div class="gate-err" id="loginErr">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+    <div class="login-foot">บทบาทและสิทธิ์การใช้งานผูกกับบัญชีผู้ใช้ที่ผู้ดูแลระบบสร้างไว้</div>
   </div>
 </div>
 
@@ -13592,15 +13583,17 @@ function pad(n,len){ return String(n).padStart(len,'0'); }
 
 /* ---------- Google Sheet data source (read+write via Apps Script Web App) ---------- */
 const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzMb4DSBPyMWpkr3--a80RgN1qLfoc2SXDUu143BLAUcWzO3KTjQmJSRCroEApLtF-KHQ/exec';
-const SHEET_API_TOKEN = 'a367042542e0b2d78ad017c9738b5bcb0a6f46d8';
+/* gates only the login call itself — every other call requires a real per-user SESSION_TOKEN issued at login */
+const APP_LOGIN_KEY = 'a367042542e0b2d78ad017c9738b5bcb0a6f46d8';
+let SESSION_TOKEN = null;
 
 async function loadAssetsFromSheet(){
   try{
-    const res = await fetch(SHEET_API_URL + '?token=' + encodeURIComponent(SHEET_API_TOKEN));
+    const res = await fetch(SHEET_API_URL + '?token=' + encodeURIComponent(SESSION_TOKEN));
     const rows = await res.json();
     if(!Array.isArray(rows)){
       showToast('โหลดข้อมูลจาก Google Sheet ไม่สำเร็จ: ' + (rows && rows.error ? rows.error : 'unauthorized'));
-      return;
+      return false;
     }
     ASSETS = rows.map((r, idx) => ({
       id: idx + 1,
@@ -13621,8 +13614,10 @@ async function loadAssetsFromSheet(){
         {title:'ข้อมูลเริ่มต้นจาก Google Sheet', doc:'-', meta:'ซิงก์จาก CAMS Assets', date: r.acquired_date || '-'},
       ],
     }));
+    return true;
   }catch(e){
     showToast('โหลดข้อมูลจาก Google Sheet ไม่สำเร็จ: ' + e.message);
+    return false;
   }
 }
 
@@ -13631,7 +13626,7 @@ async function postToSheet(payload, errPrefix){
     const res = await fetch(SHEET_API_URL, {
       method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify(Object.assign({ token: SHEET_API_TOKEN }, payload)),
+      body: JSON.stringify(Object.assign({ token: SESSION_TOKEN }, payload)),
     });
     const result = await res.json();
     if(!result.ok) showToast(errPrefix + ': ' + (result.error || 'unauthorized'));
@@ -13740,23 +13735,87 @@ function checkGateCode(){
 }
 
 /* ---------- Login / logout ---------- */
-let CURRENT_ROLE = 'OFFICER';
-async function doLogin(){
-  CURRENT_ROLE = document.getElementById('loginRole').value;
+const SESSION_STORAGE_KEY = 'cams_session';
+let CURRENT_ROLE = null;
+let CURRENT_USER = null;
+let CURRENT_DISPLAY_NAME = null;
+
+function saveSession_(){
+  try{ sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+    token: SESSION_TOKEN, role: CURRENT_ROLE, user: CURRENT_USER, displayName: CURRENT_DISPLAY_NAME,
+  })); }catch(e){}
+}
+function clearSession_(){
+  SESSION_TOKEN = null; CURRENT_ROLE = null; CURRENT_USER = null; CURRENT_DISPLAY_NAME = null;
+  try{ sessionStorage.removeItem(SESSION_STORAGE_KEY); }catch(e){}
+}
+
+function showAppShell_(){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appShell').classList.add('active');
-  document.getElementById('whoRole').textContent = CURRENT_ROLE;
-  document.getElementById('whoAvatar').textContent = CURRENT_ROLE.charAt(0);
+  document.getElementById('whoRole').textContent = CURRENT_DISPLAY_NAME + ' · ' + CURRENT_ROLE;
+  document.getElementById('whoAvatar').textContent = CURRENT_DISPLAY_NAME.charAt(0).toUpperCase();
   applyRoleView();
-  showToast('กำลังโหลดข้อมูลจาก Google Sheet...');
-  await ASSETS_LOAD_PROMISE;
   goView('dashboard');
-  showToast('เข้าสู่ระบบสำเร็จ (โหมดสาธิต) — บทบาท: ' + CURRENT_ROLE);
 }
+
+async function doLogin(){
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  document.getElementById('loginErr').classList.remove('show');
+  if(!username || !password){
+    document.getElementById('loginErr').textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';
+    document.getElementById('loginErr').classList.add('show');
+    return;
+  }
+
+  const result = await postToSheet({ action:'login', appKey: APP_LOGIN_KEY, username, password }, 'เข้าสู่ระบบไม่สำเร็จ');
+  if(!result.ok){
+    document.getElementById('loginErr').textContent = result.error === 'invalid username or password'
+      ? 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' : (result.error || 'เข้าสู่ระบบไม่สำเร็จ');
+    document.getElementById('loginErr').classList.add('show');
+    return;
+  }
+
+  SESSION_TOKEN = result.token;
+  CURRENT_ROLE = result.role;
+  CURRENT_USER = username;
+  CURRENT_DISPLAY_NAME = result.display_name || username;
+  saveSession_();
+  document.getElementById('loginPassword').value = '';
+
+  showToast('กำลังโหลดข้อมูลจาก Google Sheet...');
+  await loadAssetsFromSheet();
+  showAppShell_();
+  showToast('เข้าสู่ระบบสำเร็จ — ' + CURRENT_DISPLAY_NAME + ' (' + CURRENT_ROLE + ')');
+}
+
+async function tryResumeSession_(){
+  let saved = null;
+  try{ saved = JSON.parse(sessionStorage.getItem(SESSION_STORAGE_KEY) || 'null'); }catch(e){}
+  if(!saved || !saved.token) return;
+  SESSION_TOKEN = saved.token;
+  CURRENT_ROLE = saved.role;
+  CURRENT_USER = saved.user;
+  CURRENT_DISPLAY_NAME = saved.displayName;
+
+  const loaded = await loadAssetsFromSheet();
+  if(!loaded){
+    // session likely expired server-side — fall back to the login screen instead of an empty app
+    clearSession_();
+    return;
+  }
+  showAppShell_();
+}
+
 function doLogout(){
   showConfirm('ต้องการออกจากระบบใช่หรือไม่?', function(){
+    postToSheet({ action:'logout' }, 'ออกจากระบบไม่สมบูรณ์');
+    clearSession_();
     document.getElementById('appShell').classList.remove('active');
     document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
   }, {title:'ออกจากระบบ', okLabel:'ออกจากระบบ', danger:true});
 }
 function applyRoleView(){
@@ -15075,7 +15134,7 @@ document.addEventListener('click', function(e){
 });
 
 /* ---------- Init ---------- */
-const ASSETS_LOAD_PROMISE = loadAssetsFromSheet();
+tryResumeSession_();
 </script>
 </body>
 </html>

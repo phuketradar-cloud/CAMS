@@ -744,7 +744,22 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
           </div>
         </div>
       </div>
-      <div class="view" id="view-custody"></div>
+      <!-- ===== Custody (ครอบครอง) ===== -->
+      <div class="view" id="view-custody">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-body">
+            <div class="toolbar">
+              <div class="search-box" id="cusSearchBox">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="cusSearch" placeholder="ค้นหา: ชื่อผู้ครอบครอง / เลขพัสดุ ทอ. / รุ่น-แบบ" oninput="onCusFilter()">
+                <button class="clear-btn" onclick="clearCusSearch()">✕</button>
+              </div>
+            </div>
+            <div class="result-count" id="cusResultCount"></div>
+          </div>
+        </div>
+        <div id="cusGroups"></div>
+      </div>
       <!-- ===== Borrow-Return (ยืม-คืน) ===== -->
       <div class="view" id="view-borrow">
         <div class="card" style="max-width:720px; margin-bottom:16px;">
@@ -13990,10 +14005,6 @@ const VIEW_TITLES = {
   custody:'ครอบครอง', transfer:'โอนอุปกรณ์', borrow:'ยืม-คืน', repair:'ซ่อม',
   inspection:'ตรวจสอบ', disposal:'ส่งคืน', reports:'รายงาน', admin:'ผู้ดูแลระบบ'
 };
-const PLACEHOLDER_INFO = {
-  custody:   {ic:'◇', flow:'อ้างอิงจากธุรกรรมล่าสุดของแต่ละอุปกรณ์ในทะเบียน', desc:'มุมมองสรุปอุปกรณ์ตามผู้ครอบครองปัจจุบัน ดูรายละเอียดแบบเต็มได้ที่หน้า "ทะเบียนอุปกรณ์"'},
-};
-
 function goView(view){
   const prevActive = document.querySelector('.view.active');
   if(prevActive && prevActive.id==='view-scan' && view!=='scan') stopScan();
@@ -14014,23 +14025,7 @@ function goView(view){
   if(view==='reports') renderReports();
   if(view==='inspection') initInspectionForm();
   if(view==='admin') initAdminPanel();
-  if(PLACEHOLDER_INFO[view]) renderPlaceholder(view);
-}
-
-function renderPlaceholder(view){
-  const el = document.getElementById('view-'+view);
-  if(el.dataset.rendered) return;
-  el.dataset.rendered = '1';
-  const info = PLACEHOLDER_INFO[view];
-  el.innerHTML = `
-    <div class="card"><div class="card-body">
-      <div class="placeholder-box">
-        <div class="ic">${info.ic}</div>
-        <h3>${VIEW_TITLES[view]}</h3>
-        <p>${info.desc}</p>
-        <div class="flow">${info.flow}</div>
-      </div>
-    </div></div>`;
+  if(view==='custody') initCustodyView();
 }
 
 /* ---------- Dashboard ---------- */
@@ -14225,6 +14220,66 @@ function renderAuditLog(){
       <td class="code">${e.date || '-'}</td><td class="code">${e.doc || '-'}</td><td>${e.title}</td>
       <td class="code">${e.asset_code}</td><td>${e.meta || ''}</td>
     </tr>`).join('');
+}
+
+/* ---------- Custody (ครอบครอง) ---------- */
+function initCustodyView(){
+  document.getElementById('cusSearch').value = '';
+  renderCustody();
+}
+
+function onCusFilter(){ renderCustody(); }
+function clearCusSearch(){ document.getElementById('cusSearch').value = ''; renderCustody(); }
+
+function custodyGroups(){
+  const groups = {};
+  ASSETS.forEach(a=>{
+    if(!a.holder || a.holder==='-' || a.holder==='(อยู่ในคลัง)') return;
+    if(a.status==='DISPOSAL' || a.status==='DISPOSED') return;
+    if(!groups[a.holder]) groups[a.holder] = [];
+    groups[a.holder].push(a);
+  });
+  return groups;
+}
+
+function renderCustody(){
+  const q = document.getElementById('cusSearch').value.trim().toLowerCase();
+  const groups = custodyGroups();
+  const totalHolders = Object.keys(groups).length;
+  const totalItems = Object.values(groups).reduce((sum, list) => sum + list.length, 0);
+
+  let holders = Object.keys(groups);
+  if(q){
+    holders = holders.filter(h => h.toLowerCase().includes(q) ||
+      groups[h].some(a => (a.asset_code+' '+a.model).toLowerCase().includes(q)));
+  }
+  holders.sort((x,y) => groups[y].length - groups[x].length);
+
+  document.getElementById('cusResultCount').textContent =
+    `พบ ${holders.length} จาก ${totalHolders} คน · รวม ${totalItems} ชิ้นที่มีผู้ครอบครอง`;
+
+  document.getElementById('cusGroups').innerHTML = holders.length ? holders.map(h=>{
+    const items = groups[h];
+    return `
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-header"><h3>${h}</h3><span style="color:var(--text-400); font-size:12.5px;">${items.length} ชิ้น</span></div>
+      <div class="card-body" style="padding:0;">
+        <table class="data-table">
+          <thead><tr><th>เลขพัสดุ ทอ.</th><th>ชนิด</th><th>รุ่น/แบบ</th><th>สถานที่ใช้งาน</th><th>สถานะ</th></tr></thead>
+          <tbody>
+            ${items.map(a=>`
+              <tr onclick="openAssetModal(${a.id})">
+                <td class="code">${a.asset_code}</td><td>${a.type}</td><td>${a.model}</td><td>${a.location}</td>
+                <td><span class="tag ${STATUS_META[a.status].cls}">${STATUS_META[a.status].label}</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('') : `<div class="card"><div class="card-body"><div class="placeholder-box">
+      <div class="ic">◇</div><h3>ไม่พบผู้ครอบครอง</h3>
+      <p>ลองค้นหาด้วยคำอื่น หรือยังไม่มีใครครอบครองอุปกรณ์อยู่ในขณะนี้</p>
+    </div></div></div>`;
 }
 
 /* ---------- Registry ---------- */

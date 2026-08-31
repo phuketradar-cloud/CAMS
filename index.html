@@ -13757,9 +13757,9 @@ async function loadAssetsFromSheet(){
       acquired_date: r.acquired_date,
       remarks: r.remarks || '',
       attachments: (r.attachments || []).map(f => ({name: f.filename, data: f.url, isImage: true})),
-      history: [
-        {title:'ข้อมูลเริ่มต้นจาก Google Sheet', doc:'-', meta:'ซิงก์จาก CAMS Assets', date: r.acquired_date || '-'},
-      ],
+      history: (r.history_log && r.history_log.length)
+        ? r.history_log.map(h => ({title: h.title, doc: h.doc, meta: h.meta, date: h.date}))
+        : [{title:'ข้อมูลเริ่มต้นจาก Google Sheet', doc:'-', meta:'ซิงก์จาก CAMS Assets', date: r.acquired_date || '-'}],
     }));
     return true;
   }catch(e){
@@ -13782,6 +13782,15 @@ async function postToSheet(payload, errPrefix){
     showToast(errPrefix + ': ' + e.message);
     return { ok:false, error: e.message };
   }
+}
+
+function pushHistory(a, entry){
+  a.history.push(entry);
+  logEntry(a.asset_code, entry);
+}
+
+async function logEntry(assetCode, entry){
+  await postToSheet({ action:'log_entry', asset_code: assetCode, doc: entry.doc || '', title: entry.title, meta: entry.meta || '', date: entry.date || '' }, 'บันทึกประวัติไม่สำเร็จ');
 }
 
 async function syncAddToSheet(asset){
@@ -13856,8 +13865,7 @@ function saveAssetEdit(){
   a.holder = holder || '(อยู่ในคลัง)';
   a.location = location || '-';
   a.remarks = remarks;
-  a.history.push({title:'แก้ไขข้อมูลอุปกรณ์', doc:'-', meta:'โดย ' + actorLabel(), date:'วันนี้'});
-
+  pushHistory(a, {title:'แก้ไขข้อมูลอุปกรณ์', doc:'-', meta:'โดย ' + actorLabel(), date:'วันนี้'});
   syncUpdateToSheet(a.asset_code, {
     type: a.type, model: a.model, category: a.category, serial_number: a.serial_number,
     holder: a.holder, location: a.location, remarks: a.remarks,
@@ -14497,8 +14505,7 @@ function confirmReturnAsset(){
   a.status = 'DISPOSAL';
   a.remarks = a.remarks ? (a.remarks + ' — ' + summary) : summary;
   a.attachments = a.attachments.concat(retAttachments);
-  a.history.push({title:'เสนอส่งคืน', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta: summary, date: dateLabel});
-
+  pushHistory(a, {title:'เสนอส่งคืน', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta: summary, date: dateLabel});
   syncUpdateToSheet(a.asset_code, {status: a.status, remarks: a.remarks});
   retAttachments.forEach(f => uploadImageToSheet(a.asset_code, f.name, f.data));
 
@@ -14541,7 +14548,7 @@ function submitBackdatedDisposal(){
       existing.status = 'DISPOSED';
       existing._prevStatus = null;
       existing.remarks = remarks ? (existing.remarks ? existing.remarks + ' — ' : '') + remarks : existing.remarks;
-      existing.history.push({title:'ส่งคืนย้อนหลัง', doc: doc, meta:'โดย ' + actorLabel() + (remarks ? ' — ' + remarks : ''), date: date});
+      pushHistory(existing, {title:'ส่งคืนย้อนหลัง', doc: doc, meta:'โดย ' + actorLabel() + (remarks ? ' — ' + remarks : ''), date: date});
       syncUpdateToSheet(existing.asset_code, {status:'DISPOSED', remarks: existing.remarks});
       showToast('บันทึกส่งคืนย้อนหลัง ' + code + ' สำเร็จ');
     } else {
@@ -14566,6 +14573,7 @@ function submitBackdatedDisposal(){
       };
       ASSETS.push(newAsset);
       syncAddToSheet(newAsset);
+      logEntry(newAsset.asset_code, newAsset.history[0]);
       showToast('บันทึกส่งคืนย้อนหลัง ' + code + ' (รายการใหม่) สำเร็จ');
     }
     document.getElementById('bdCode').value = '';
@@ -14601,7 +14609,7 @@ function undoDisposal(id){
     a.status = a._prevStatus;
     a._prevStatus = null;
     syncUpdateToSheet(a.asset_code, {status: a.status});
-    a.history.push({title:'ย้อนกลับการเสนอส่งคืน', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + actorLabel(), date:'วันนี้'});
+    pushHistory(a, {title:'ย้อนกลับการเสนอส่งคืน', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + actorLabel(), date:'วันนี้'});
     renderDisposalList();
     renderRegistry(false);
     showToast('ย้อนกลับสถานะ ' + a.asset_code + ' แล้ว');
@@ -14614,7 +14622,7 @@ function finalizeDisposal(id){
     a.status = 'DISPOSED';
     a._prevStatus = null;
     syncUpdateToSheet(a.asset_code, {status: a.status});
-    a.history.push({title:'ส่งคืนถาวร', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + actorLabel(), date:'วันนี้'});
+    pushHistory(a, {title:'ส่งคืนถาวร', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + actorLabel(), date:'วันนี้'});
     renderDisposalList();
     renderRegistry(false);
     showToast('ส่งคืนอุปกรณ์ ' + a.asset_code + ' ถาวรแล้ว');
@@ -14646,7 +14654,7 @@ function doBorrowAsset(a, borrower, dueDate, remarks){
   a.status = 'BORROWED';
 
   const summary = 'ผู้ยืม: ' + borrower + ' · กำหนดคืน: ' + dueDate + (remarks ? ' · ' + remarks : '') + ' · บันทึกโดย ' + actorLabel();
-  a.history.push({title:'ยืมอุปกรณ์', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
+  pushHistory(a, {title:'ยืมอุปกรณ์', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
   syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder});
   rememberReceiveValue('borrower', borrower);
 }
@@ -14782,7 +14790,7 @@ function returnBorrow(id){
   showConfirm(`ยืนยันรับคืน <b>${a.asset_code}</b> จาก <b>${borrower}</b> ใช่หรือไม่? <br>ผู้ครอบครองจะกลับเป็น <b>${backTo}</b>`, function(){
     a.holder = a._prevHolder || a.holder;
     a.status = a._prevStatus || 'ASSIGNED';
-    a.history.push({title:'รับคืนอุปกรณ์ยืม', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta:'รับคืนจาก ' + borrower + ' · กลับสู่ ' + a.holder + ' · โดย ' + actorLabel(), date:'วันนี้'});
+    pushHistory(a, {title:'รับคืนอุปกรณ์ยืม', doc:'BRW-2569-'+pad(LOG_SEQ++,5), meta:'รับคืนจาก ' + borrower + ' · กลับสู่ ' + a.holder + ' · โดย ' + actorLabel(), date:'วันนี้'});
     syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder});
     delete a._borrow;
     delete a._prevHolder;
@@ -14866,7 +14874,7 @@ function submitIssue(){
   if(remarks) a.remarks = a.remarks ? (a.remarks + ' — ' + remarks) : remarks;
 
   const summary = 'ผู้รับ: ' + holder + ' · สถานที่: ' + location + (remarks ? ' · ' + remarks : '') + ' · โดย ' + actorLabel();
-  a.history.push({title:'เบิกจ่าย', doc:'ISS-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
+  pushHistory(a, {title:'เบิกจ่าย', doc:'ISS-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
   syncUpdateToSheet(a.asset_code, {status: a.status, holder: a.holder, location: a.location, remarks: a.remarks});
   rememberReceiveValue('holder', holder);
   rememberReceiveValue('location', location);
@@ -14969,7 +14977,7 @@ function submitRepair(){
   a.status = 'REPAIR';
 
   const summary = 'อาการ: ' + issue + ' · ผู้รับซ่อม: ' + repairer + ' · วันที่ส่ง: ' + sentDate + ' · โดย ' + actorLabel();
-  a.history.push({title:'ส่งซ่อม', doc:'REP-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
+  pushHistory(a, {title:'ส่งซ่อม', doc:'REP-2569-'+pad(LOG_SEQ++,5), meta: summary, date:'วันนี้'});
   syncUpdateToSheet(a.asset_code, {status: a.status});
   rememberReceiveValue('repairer', repairer);
 
@@ -15021,7 +15029,7 @@ function confirmRepairResult(){
   const summary = resultLabel + ' · ค่าใช้จ่าย: ' + costLabel + ' · วันที่: ' + doneDate + (remarks ? ' · ' + remarks : '') + ' · โดย ' + actorLabel();
 
   a.status = result === 'success' ? (a._prevStatus || 'ASSIGNED') : 'DAMAGED';
-  a.history.push({title:'สรุปผลการซ่อม', doc:'REP-2569-'+pad(LOG_SEQ++,5), meta: summary, date: doneDate});
+  pushHistory(a, {title:'สรุปผลการซ่อม', doc:'REP-2569-'+pad(LOG_SEQ++,5), meta: summary, date: doneDate});
   syncUpdateToSheet(a.asset_code, {status: a.status});
   delete a._repair;
   delete a._prevStatus;
@@ -15129,7 +15137,7 @@ function closeInspectionRound(){
       if(!a) return;
       const result = it.result || 'not_found';
       const resultLabel = {found:'พบ', not_found:'ไม่พบ', damaged:'พบแต่ชำรุด'}[result];
-      a.history.push({title:'ตรวจนับ: ' + resultLabel, doc: doc, meta:'รอบตรวจ: ' + scopeLabel + ' · โดย ' + actorLabel(), date: startedAt});
+      pushHistory(a, {title:'ตรวจนับ: ' + resultLabel, doc: doc, meta:'รอบตรวจ: ' + scopeLabel + ' · โดย ' + actorLabel(), date: startedAt});
       if(result === 'not_found'){
         a.status = 'LOST';
         syncUpdateToSheet(a.asset_code, {status:'LOST'});
@@ -15256,7 +15264,7 @@ function submitTransfer(){
   showConfirm(`ยืนยันโอน <b>${a.asset_code}</b> ไปยัง <b>${holder}</b> (${unit}) ใช่หรือไม่?`, function(){
     a.unit = unit; a.holder = holder; a.status = 'ASSIGNED';
     syncUpdateToSheet(a.asset_code, {unit: a.unit, holder: a.holder, status: a.status});
-    a.history.push({title:'โอนอุปกรณ์ไปยัง ' + holder + ' (' + unit + ')', doc:'TRF-2569-'+pad(LOG_SEQ++,5), meta:(remarks||'ไม่มีหมายเหตุ') + ' · โดย ' + actorLabel(), date:'วันนี้'});
+    pushHistory(a, {title:'โอนอุปกรณ์ไปยัง ' + holder + ' (' + unit + ')', doc:'TRF-2569-'+pad(LOG_SEQ++,5), meta:(remarks||'ไม่มีหมายเหตุ') + ' · โดย ' + actorLabel(), date:'วันนี้'});
     document.getElementById('trfRemarks').value='';
     renderTransferForm2Reset();
     renderRegistry(false);
@@ -15391,6 +15399,7 @@ function submitReceive(){
   };
   ASSETS.push(newAsset);
   syncAddToSheet(newAsset);
+  logEntry(newAsset.asset_code, newAsset.history[0]);
   rcvAttachments.forEach(f => uploadImageToSheet(newAsset.asset_code, f.name, f.data));
   rememberReceiveValue('type', type);
   rememberReceiveValue('model', model);

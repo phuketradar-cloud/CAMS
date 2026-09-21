@@ -566,7 +566,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
                 </div>
                 <div class="field">
                   <label>ชนิด (กรอกเฉพาะเลขพัสดุใหม่)</label>
-                  <input type="text" class="filter-select" style="width:100%" id="bdType" list="rcvTypeList" autocomplete="off">
+                  <select class="filter-select" style="width:100%" id="bdType"></select>
                 </div>
                 <div class="field">
                   <label>รุ่น/แบบ (กรอกเฉพาะเลขพัสดุใหม่)</label>
@@ -611,8 +611,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
               </div>
               <div class="field">
                 <label>ชนิด</label>
-                <input type="text" class="filter-select" style="width:100%" id="rcvType" list="rcvTypeList" autocomplete="off">
-                <datalist id="rcvTypeList"></datalist>
+                <select class="filter-select" style="width:100%" id="rcvType"></select>
               </div>
               <div class="field">
                 <label>รุ่น/แบบ</label>
@@ -1087,7 +1086,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
       <div class="form-grid">
         <div class="field">
           <label>ชนิด</label>
-          <input type="text" class="filter-select" style="width:100%" id="editType" list="rcvTypeList" autocomplete="off">
+          <select class="filter-select" style="width:100%" id="editType"></select>
         </div>
         <div class="field">
           <label>รุ่น/แบบ</label>
@@ -13713,7 +13712,35 @@ const STATUS_META = {
 
 const UNITS = ['ผลก.ทอ.', 'บน.1', 'บน.2', 'บน.4', 'บน.7', 'ศคพ.'];
 const HOLDERS = ['ร.อ.สมชาย ใจดี', 'พ.อ.อ.วิชัย รักงาน', 'จ.อ.ประยุทธ มั่นคง', 'ร.ต.สุนทร ศรีสุข', 'จ.ท.อนันต์ ไชยวงศ์', '(อยู่ในคลัง)'];
-const TYPES = ['วิทยุสื่อสาร', 'คอมพิวเตอร์', 'ปริ้นเตอร์', 'จอแสดงผล', 'อื่นๆ'];
+const TYPE_CATEGORIES = [
+  {code:'COM-01', label:'วิทยุสื่อสารภาคพื้นดิน',              examples:'VHF, UHF, HF, Multiband Radio'},
+  {code:'COM-02', label:'วิทยุอากาศยาน / Air Band',              examples:'Air Band VHF, Aircraft Radio'},
+  {code:'COM-03', label:'วิทยุสื่อสารผ่านดาวเทียม (SATCOM)',     examples:'SATCOM Radio, Iridium'},
+  {code:'COM-04', label:'วิทยุฉุกเฉิน / Survival Radio',          examples:'PRC-112G, Emergency Radio'},
+  {code:'COM-05', label:'ระบบทวนสัญญาณ',                        examples:'Repeater, Multiband Repeater, Cross-band Repeater'},
+  {code:'COM-06', label:'เสาอากาศและอุปกรณ์ RF',                 examples:'VHF/UHF/HF Antenna, RF Cable, Duplexer'},
+  {code:'COM-07', label:'ระบบโทรศัพท์และ IP Communication',      examples:'IP Phone, VoIP Gateway, Telephone System'},
+  {code:'COM-08', label:'ระบบประชุมทางไกล',                     examples:'VTC, Video Conference Equipment'},
+  {code:'COM-09', label:'ระบบติดตามและระบุตำแหน่ง',              examples:'GPS Tracker, SPOT, Satellite Tracker'},
+  {code:'COM-10', label:'ระบบแจ้งเหตุ / Beacon / Locator',        examples:'ELT, PLB, Locator Beacon'},
+  {code:'COM-11', label:'ระบบเครือข่ายและ Data Communication',   examples:'Switch, Router, Firewall, Wi-Fi'},
+  {code:'COM-12', label:'ระบบสารสนเทศ SAR',                     examples:'SAR Server, SAR Application, Database'},
+  {code:'COM-13', label:'ระบบแสดงผล / Command Center',           examples:'Videowall, Display, Monitor'},
+  {code:'COM-14', label:'อุปกรณ์สื่อสารเคลื่อนที่',              examples:'Mobile Communication Kit, Portable C2'},
+  {code:'COM-15', label:'อุปกรณ์ไฟฟ้าและพลังงาน',               examples:'Battery, Charger, Power Supply, UPS'},
+  {code:'COM-16', label:'อุปกรณ์ประกอบและอุปกรณ์เสริม',          examples:'Headset, PTT, Microphone, Carrying Case'},
+  {code:'COM-17', label:'อุปกรณ์ทดสอบและบำรุงรักษา',             examples:'RF Tester, Spectrum Analyzer, Multimeter'},
+  {code:'COM-18', label:'อุปกรณ์สื่อสารฉุกเฉิน/สำรอง',           examples:'Emergency Communication Kit, Backup Radio'},
+];
+const TYPES = TYPE_CATEGORIES.map(t=>t.label);
+function typeOptionsHtml(selected){
+  return '<option value="">-- เลือกชนิด --</option>' + TYPE_CATEGORIES.map(t=>
+    `<option value="${t.label}"${t.label===selected ? ' selected' : ''}>${t.code} — ${t.label}</option>`
+  ).join('');
+}
+function populateTypeSelect(id, selected){
+  document.getElementById(id).innerHTML = typeOptionsHtml(selected || '');
+}
 const MODELS = [
   'Motorola APX 8000', 'Harris XL-200P', 'Icom IC-F5021', 'Kenwood TK-3701D', 'Codan Envoy X2', 'Sepura SC21',
   'Dell OptiPlex 7090', 'HP EliteDesk 800 G6', 'Lenovo ThinkCentre M70q',
@@ -13721,14 +13748,6 @@ const MODELS = [
   'Dell P2422H', 'ViewSonic VA2447-mh',
   'อื่นๆ (ระบุในหมายเหตุ)',
 ];
-const MODEL_TYPE = {
-  'Motorola APX 8000': 'วิทยุสื่อสาร', 'Harris XL-200P': 'วิทยุสื่อสาร', 'Icom IC-F5021': 'วิทยุสื่อสาร',
-  'Kenwood TK-3701D': 'วิทยุสื่อสาร', 'Codan Envoy X2': 'วิทยุสื่อสาร', 'Sepura SC21': 'วิทยุสื่อสาร',
-  'Dell OptiPlex 7090': 'คอมพิวเตอร์', 'HP EliteDesk 800 G6': 'คอมพิวเตอร์', 'Lenovo ThinkCentre M70q': 'คอมพิวเตอร์',
-  'HP LaserJet Pro M404dn': 'ปริ้นเตอร์', 'Canon imageCLASS MF445dw': 'ปริ้นเตอร์',
-  'Dell P2422H': 'จอแสดงผล', 'ViewSonic VA2447-mh': 'จอแสดงผล',
-  'อื่นๆ (ระบุในหมายเหตุ)': 'อื่นๆ',
-};
 const MODEL_CATEGORY = {
   'Motorola APX 8000': 'วิทยุมือถือ (Handheld)',
   'Harris XL-200P':    'วิทยุมือถือ (Handheld)',
@@ -13912,7 +13931,7 @@ function openEditAssetModal(id){
   if(!a) return;
   editTargetId = id;
   document.getElementById('editAssetCode').textContent = a.asset_code;
-  document.getElementById('editType').value = a.type || '';
+  populateTypeSelect('editType', a.type || '');
   document.getElementById('editModel').value = a.model || '';
   document.getElementById('editSerial').value = a.serial_number === '-' ? '' : (a.serial_number || '');
   document.getElementById('editHolder').value = a.holder === '(อยู่ในคลัง)' ? '' : (a.holder || '');
@@ -14638,6 +14657,7 @@ function toggleBackdatedForm(){
 
 function initBackdatedDisposalForm(){
   document.getElementById('bdCodeList').innerHTML = ASSETS.map(a=>`<option value="${a.asset_code}"></option>`).join('');
+  populateTypeSelect('bdType');
   if(!document.getElementById('bdDate').value) document.getElementById('bdDate').value = new Date().toISOString().slice(0,10);
 }
 
@@ -15393,7 +15413,7 @@ function renderTransferForm2Reset(){
 /* จำค่าที่เคยกรอกไว้ในเบราว์เซอร์ (localStorage) เพื่อ autofill ช่องชนิด/รุ่น/S-N/หน่วย — ยกเว้นเลขพัสดุ ทอ. */
 const RECENT_KEY = 'cams_recent_receive_values';
 function loadRecentValues(){
-  const defaults = {type:[], model:[], holder:[], location:[], serial:[], borrower:[], repairer:[]};
+  const defaults = {model:[], holder:[], location:[], serial:[], borrower:[], repairer:[]};
   try{ return Object.assign({}, defaults, JSON.parse(localStorage.getItem(RECENT_KEY)) || {}); }
   catch(e){ return defaults; }
 }
@@ -15408,7 +15428,7 @@ function fillDatalist(id, values){
 }
 function refreshReceiveDatalists(){
   const recent = loadRecentValues();
-  fillDatalist('rcvTypeList', [...new Set([...TYPES, ...recent.type])]);
+  populateTypeSelect('rcvType');
   fillDatalist('rcvModelList', [...new Set([...MODELS, ...recent.model])]);
   fillDatalist('rcvHolderList', recent.holder);
   fillDatalist('rcvLocationList', recent.location);
@@ -15504,7 +15524,6 @@ function submitReceive(){
       newAsset.attachments = uploaded;
     });
   }
-  rememberReceiveValue('type', type);
   rememberReceiveValue('model', model);
   rememberReceiveValue('holder', holder);
   rememberReceiveValue('location', location);

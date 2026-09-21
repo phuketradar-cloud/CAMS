@@ -13723,14 +13723,29 @@ const TYPE_CATEGORIES = [
   {code:'COM-08', label:'ระบบประชุมทางไกล',                     examples:'VTC, Video Conference Equipment'},
   {code:'COM-09', label:'ระบบติดตามและระบุตำแหน่ง',              examples:'GPS Tracker, SPOT, Satellite Tracker'},
   {code:'COM-10', label:'ระบบแจ้งเหตุ / Beacon / Locator',        examples:'ELT, PLB, Locator Beacon'},
-  {code:'COM-11', label:'ระบบเครือข่ายและ Data Communication',   examples:'Switch, Router, Firewall, Wi-Fi'},
   {code:'COM-12', label:'ระบบสารสนเทศ SAR',                     examples:'SAR Server, SAR Application, Database'},
-  {code:'COM-13', label:'ระบบแสดงผล / Command Center',           examples:'Videowall, Display, Monitor'},
-  {code:'COM-14', label:'อุปกรณ์สื่อสารเคลื่อนที่',              examples:'Mobile Communication Kit, Portable C2'},
-  {code:'COM-15', label:'อุปกรณ์ไฟฟ้าและพลังงาน',               examples:'Battery, Charger, Power Supply, UPS'},
   {code:'COM-16', label:'อุปกรณ์ประกอบและอุปกรณ์เสริม',          examples:'Headset, PTT, Microphone, Carrying Case'},
   {code:'COM-17', label:'อุปกรณ์ทดสอบและบำรุงรักษา',             examples:'RF Tester, Spectrum Analyzer, Multimeter'},
   {code:'COM-18', label:'อุปกรณ์สื่อสารฉุกเฉิน/สำรอง',           examples:'Emergency Communication Kit, Backup Radio'},
+  // หมวด IT-xx — รวมหมวดที่ซ้ำซ้อนกับ COM มาไว้ในนี้:
+  // COM-11 (เครือข่าย/Data Comm) -> IT-09, COM-13 (จอแสดงผล/Command Center) -> IT-07,
+  // COM-14 (อุปกรณ์สื่อสารเคลื่อนที่) -> IT-16, COM-15 (ไฟฟ้าและพลังงาน) -> IT-10
+  {code:'IT-01', label:'Desktop Computer',        examples:'PC ประจำโต๊ะ, Workstation'},
+  {code:'IT-02', label:'Notebook Computer',       examples:'Notebook สำหรับเจ้าหน้าที่ / SMC / Staff'},
+  {code:'IT-03', label:'Tablet',                  examples:'Tablet สำหรับ Field SAR / OSC'},
+  {code:'IT-04', label:'Rugged Computer',         examples:'Rugged Notebook / Rugged Tablet'},
+  {code:'IT-05', label:'Server',                  examples:'Application Server, Database Server'},
+  {code:'IT-06', label:'NAS / Storage',           examples:'NAS, Storage Server'},
+  {code:'IT-07', label:'Monitor / Display',       examples:'Monitor, Professional Display, Videowall'},
+  {code:'IT-08', label:'Printer / Scanner',       examples:'Printer, Scanner, Multifunction'},
+  {code:'IT-09', label:'Network Equipment',       examples:'Switch, Router, Firewall, AP, Wi-Fi Equipment'},
+  {code:'IT-10', label:'UPS / Power',             examples:'UPS, PDU, Power Backup, Battery, Charger, Power Supply'},
+  {code:'IT-11', label:'Computer Peripheral',     examples:'Keyboard, Mouse, Webcam, Docking'},
+  {code:'IT-12', label:'Data Storage',            examples:'External HDD, SSD, USB Storage'},
+  {code:'IT-13', label:'GIS / Mapping Equipment', examples:'GIS Workstation, GPS Interface'},
+  {code:'IT-14', label:'AV / Presentation',       examples:'Projector, Display Controller'},
+  {code:'IT-15', label:'Cybersecurity Equipment', examples:'Firewall, Security Appliance'},
+  {code:'IT-16', label:'Portable IT Kit',         examples:'Mobile SAR Command Kit, Mobile Communication Kit, Portable C2'},
 ];
 const TYPES = TYPE_CATEGORIES.map(t=>t.label);
 function typeOptionsHtml(selected){

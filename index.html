@@ -14407,7 +14407,8 @@ function updateTypeFilterCounts(){
     if(!opt.value) return;
     const count = ASSETS.filter(a=>a.type===opt.value).length;
     opt.textContent = `(${count}) ${opt.value}`;
-    opt.style.color = count>0 ? '#15803d' : '';
+    opt.style.color = count>0 ? '#0a5c2b' : '';
+    opt.style.fontWeight = count>0 ? '700' : '';
   });
 }
 

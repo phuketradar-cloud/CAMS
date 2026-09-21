@@ -14071,6 +14071,7 @@ function applyTheme(id){
   const icon = document.getElementById('themeToggleIcon');
   if(icon) icon.textContent = t.icon;
   try{ localStorage.setItem(THEME_KEY, t.id); }catch(e){}
+  if(typeof updateTypeFilterCounts === 'function') updateTypeFilterCounts();
 }
 function cycleTheme(){
   const current = document.documentElement.getAttribute('data-theme') || 'cyber';
@@ -14502,11 +14503,13 @@ function initFilters(){
 function updateTypeFilterCounts(){
   const typeSel = document.getElementById('regTypeFilter');
   if(!typeSel) return;
+  const theme = document.documentElement.getAttribute('data-theme') || 'cyber';
+  const activeColor = theme === 'light' ? '#0a5c2b' : '#ffd400';
   Array.from(typeSel.options).forEach(opt=>{
     if(!opt.value) return;
     const count = ASSETS.filter(a=>a.type===opt.value).length;
     opt.textContent = `(${count}) ${opt.value}`;
-    opt.style.color = count>0 ? '#0a5c2b' : '';
+    opt.style.color = count>0 ? activeColor : '';
     opt.style.fontWeight = count>0 ? '700' : '';
   });
 }

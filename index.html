@@ -276,6 +276,11 @@ table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
 .timeline .tl-meta{font-size:11.5px; color:var(--text-400); margin-top:1px;}
 
 .attach-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:10px;}
+.upload-status{display:none; margin-top:10px; padding:8px 12px; border-radius:6px; font-size:12.5px; font-weight:600;}
+.upload-status.show{display:flex; align-items:center; gap:6px;}
+.upload-status.uploading{background:var(--steel-100); color:var(--steel-500);}
+.upload-status.done{background:var(--green-100); color:var(--green-600);}
+.upload-status.error{background:var(--amber-100); color:var(--amber-500);}
 .attach-tile{position:relative; border:1px solid var(--border); border-radius:6px; overflow:hidden; aspect-ratio:1; background:var(--neutral-100); display:flex; align-items:center; justify-content:center; cursor:pointer;}
 .attach-tile img{width:100%; height:100%; object-fit:cover;}
 .attach-tile .ic{font-size:28px;}
@@ -640,6 +645,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
               <div class="field full">
                 <label>ไฟล์ภาพแนบ (สูงสุด 10 ภาพ)</label>
                 <div class="attach-grid" id="rcvAttachGrid"></div>
+                <div class="upload-status" id="rcvUploadStatus"></div>
                 <input type="file" id="rcvFileInput" accept="image/*" multiple style="display:none" onchange="onRcvFilesSelected(event)">
               </div>
             </div>
@@ -1034,6 +1040,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
 
       <div class="tab-panel" id="tab-files">
         <div class="attach-grid" id="amAttachGrid"></div>
+        <div class="upload-status" id="amUploadStatus"></div>
         <input type="file" id="amFileInput" multiple style="display:none" onchange="onFilesSelected(event)">
       </div>
     </div>
@@ -1157,6 +1164,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
         <div class="field full">
           <label>ไฟล์ภาพแนบ (สูงสุด 10 ภาพ)</label>
           <div class="attach-grid" id="retAttachGrid"></div>
+          <div class="upload-status" id="retUploadStatus"></div>
           <input type="file" id="retFileInput" accept="image/*" multiple style="display:none" onchange="onRetFilesSelected(event)">
         </div>
       </div>
@@ -13844,31 +13852,43 @@ function readFileAsDataUrl_(file){
    simultaneous doPost calls) and reports real progress instead of a fire-and-
    forget "done" message that fires before the server confirms anything. */
 /* Uploads pre-read {name, data} attachments one at a time. */
-async function uploadAttachmentsWithProgress_(assetCode, items){
+function setUploadStatus_(statusElId, cls, text){
+  const el = statusElId && document.getElementById(statusElId);
+  if(!el) return;
+  el.className = 'upload-status show ' + cls;
+  el.textContent = text;
+}
+
+async function uploadAttachmentsWithProgress_(assetCode, items, statusElId){
   let succeeded = 0;
   const succeededItems = [];
   for(let i = 0; i < items.length; i++){
     const item = items[i];
-    showToast(`กำลังอัปโหลดไฟล์แนบ ${i + 1}/${items.length}...`);
+    const progressMsg = `กำลังอัปโหลดไฟล์แนบ ${i + 1}/${items.length}...`;
+    showToast(progressMsg);
+    setUploadStatus_(statusElId, 'uploading', progressMsg);
     const result = await uploadImageToSheet(assetCode, item.name, item.data);
     if(result && result.ok){
       succeeded++;
       succeededItems.push(item);
     }
   }
-  showToast(succeeded === items.length
+  const allOk = succeeded === items.length;
+  const doneMsg = allOk
     ? `อัปโหลดไฟล์แนบสำเร็จครบ ${succeeded} ไฟล์`
-    : `อัปโหลดสำเร็จ ${succeeded} จาก ${items.length} ไฟล์ — ที่เหลือไม่สำเร็จ ลองแนบใหม่อีกครั้ง`);
+    : `อัปโหลดสำเร็จ ${succeeded} จาก ${items.length} ไฟล์ — ที่เหลือไม่สำเร็จ ลองแนบใหม่อีกครั้ง`;
+  showToast(doneMsg);
+  setUploadStatus_(statusElId, allOk ? 'done' : 'error', (allOk ? '✓ ' : '') + doneMsg);
   return succeededItems;
 }
 
 /* Reads raw <input type=file> File objects, then delegates to uploadAttachmentsWithProgress_. */
-async function uploadFilesWithProgress_(assetCode, files){
+async function uploadFilesWithProgress_(assetCode, files, statusElId){
   const items = [];
   for(const file of files){
     items.push({name: file.name, data: await readFileAsDataUrl_(file), isImage: file.type.startsWith('image/')});
   }
-  return uploadAttachmentsWithProgress_(assetCode, items);
+  return uploadAttachmentsWithProgress_(assetCode, items, statusElId);
 }
 
 async function syncDeleteImageFromSheet(assetCode, url){
@@ -14420,6 +14440,7 @@ function openAssetModal(id){
     <li><div class="tl-title">${h.title}</div><div class="tl-meta">${h.doc} · ${h.meta} · ${h.date}</div></li>
   `).join('');
   renderAttachments(a);
+  document.getElementById('amUploadStatus').className = 'upload-status';
   document.getElementById('amDisposalBtn').style.display = a.status==='DISPOSAL'||a.status==='DISPOSED' ? 'none' : (CURRENT_ROLE==='VIEWER'?'none':'inline-flex');
   document.getElementById('amBorrowBtn').style.display = (a.status==='IN_STOCK'||a.status==='ASSIGNED') ? (CURRENT_ROLE==='VIEWER'?'none':'inline-flex') : 'none';
   switchTab('history', document.querySelector('.tab-btn[data-tab="history"]'));
@@ -14493,7 +14514,7 @@ async function onFilesSelected(e){
   e.target.value = '';
   if(files.length===0) return;
 
-  const uploaded = await uploadFilesWithProgress_(a.asset_code, files);
+  const uploaded = await uploadFilesWithProgress_(a.asset_code, files, 'amUploadStatus');
   uploaded.forEach(f => a.attachments.push(f));
   renderAttachments(a);
 }
@@ -14533,6 +14554,7 @@ function sendToDisposal(id){
     .map(h=>`<option value="${h}"></option>`).join('');
   retAttachments = [];
   renderRetAttachments();
+  document.getElementById('retUploadStatus').className = 'upload-status';
   openModal('returnFormModal');
 }
 
@@ -14589,7 +14611,7 @@ async function confirmReturnAsset(){
   const summary = 'สาเหตุ: ' + reason + ' · ผู้รับคืน: ' + recipient + ' · เวลา: ' + dateLabel + ' · โดย ' + actorLabel();
 
   const uploaded = retAttachments.length
-    ? await uploadAttachmentsWithProgress_(a.asset_code, retAttachments)
+    ? await uploadAttachmentsWithProgress_(a.asset_code, retAttachments, 'retUploadStatus')
     : [];
 
   a._prevStatus = a.status;
@@ -15491,7 +15513,7 @@ function submitReceive(){
   syncAddToSheet(newAsset);
   logEntry(newAsset.asset_code, newAsset.history[0]);
   if(rcvAttachments.length){
-    uploadAttachmentsWithProgress_(newAsset.asset_code, rcvAttachments).then(uploaded => {
+    uploadAttachmentsWithProgress_(newAsset.asset_code, rcvAttachments, 'rcvUploadStatus').then(uploaded => {
       newAsset.attachments = uploaded;
     });
   }
@@ -15503,6 +15525,7 @@ function submitReceive(){
   refreshReceiveDatalists();
   rcvAttachments = [];
   renderRcvAttachments();
+  document.getElementById('rcvUploadStatus').className = 'upload-status';
 
   document.getElementById('rcvResultQr').innerHTML = renderQrSvg(qrPayload(newAsset.asset_code), 176);
   document.getElementById('rcvResultCode').textContent = newAsset.asset_code;

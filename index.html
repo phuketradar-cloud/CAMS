@@ -14384,6 +14384,7 @@ function initFilters(){
     opt.value = t; opt.textContent = t;
     typeSel.appendChild(opt);
   });
+  updateTypeFilterCounts();
   const statusSel = document.getElementById('regStatusFilter');
   Object.keys(STATUS_META).forEach(code=>{
     const opt = document.createElement('option');
@@ -14396,6 +14397,17 @@ function initFilters(){
     const opt = document.createElement('option');
     opt.value = loc; opt.textContent = loc;
     unitSel.appendChild(opt);
+  });
+}
+
+function updateTypeFilterCounts(){
+  const typeSel = document.getElementById('regTypeFilter');
+  if(!typeSel) return;
+  Array.from(typeSel.options).forEach(opt=>{
+    if(!opt.value) return;
+    const count = ASSETS.filter(a=>a.type===opt.value).length;
+    opt.textContent = `(${count}) ${opt.value}`;
+    opt.style.color = count>0 ? '#15803d' : '';
   });
 }
 
@@ -14418,6 +14430,7 @@ function renderRegistry(resetFilters){
       document.getElementById('regStatusFilter').dataset.init='1';
     }
   }
+  updateTypeFilterCounts();
   const q = document.getElementById('regSearch').value.trim().toLowerCase();
   const typeF = document.getElementById('regTypeFilter').value;
   const statusF = document.getElementById('regStatusFilter').value;

@@ -606,8 +606,8 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
             <div class="form-grid">
               <div class="field full">
                 <label>เลขพัสดุ ทอ.</label>
-                <input type="text" id="rcvCode" class="mono" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
-                <div class="form-note">ใช้เป็นข้อมูลที่เข้ารหัสลง QR เฉพาะของอุปกรณ์ชิ้นนี้</div>
+                <input type="text" id="rcvCode" class="mono" placeholder="xxxx-xx-xxx-xxxx" style="width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text-900);">
+                <div class="form-note">กรอกตามรูปแบบ xxxx-xx-xxx-xxxx — ใช้เป็นข้อมูลที่เข้ารหัสลง QR เฉพาะของอุปกรณ์ชิ้นนี้</div>
               </div>
               <div class="field">
                 <label>ชนิด</label>
@@ -676,7 +676,7 @@ textarea{width:100%; padding:9px 11px; border:1px solid var(--border); border-ra
               <div class="scan-manual">
                 <label style="display:block; font-size:12.5px; color:var(--text-600); margin-bottom:6px; font-weight:500;">หรือพิมพ์/วางเลขพัสดุ ทอ.ด้วยตนเอง</label>
                 <div class="row">
-                  <input type="text" id="scanManualInput" class="mono" placeholder="เช่น COM-2569-0001" onkeydown="if(event.key==='Enter') lookupScanManual()">
+                  <input type="text" id="scanManualInput" class="mono" placeholder="เช่น xxxx-xx-xxx-xxxx" onkeydown="if(event.key==='Enter') lookupScanManual()">
                   <button class="btn btn-steel btn-sm" onclick="lookupScanManual()">ค้นหา</button>
                 </div>
               </div>
@@ -15417,7 +15417,6 @@ function refreshReceiveDatalists(){
 
 function initReceiveForm(){
   refreshReceiveDatalists();
-  if(!document.getElementById('rcvCode').value) autoGenReceiveCode();
   if(!document.getElementById('rcvDate').value) document.getElementById('rcvDate').value = new Date().toISOString().slice(0,10);
   renderRcvAttachments();
 }
@@ -15464,19 +15463,6 @@ function removeRcvAttachment(idx){
   renderRcvAttachments();
 }
 
-function nextAssetSeq(){
-  let max = 0;
-  ASSETS.forEach(a=>{
-    const m = a.asset_code.match(/(\d+)$/);
-    if(m) max = Math.max(max, parseInt(m[1],10));
-  });
-  return max + 1;
-}
-
-function autoGenReceiveCode(){
-  document.getElementById('rcvCode').value = 'COM-2569-' + pad(nextAssetSeq(), 4);
-}
-
 function submitReceive(){
   const code = document.getElementById('rcvCode').value.trim();
   const type = document.getElementById('rcvType').value;
@@ -15488,6 +15474,7 @@ function submitReceive(){
   const remarks = document.getElementById('rcvRemarks').value.trim();
 
   if(!code){ showToast('กรุณาระบุเลขพัสดุ ทอ.'); return; }
+  if(!/^\d{4}-\d{2}-\d{3}-\d{4}$/.test(code)){ showToast('รูปแบบเลขพัสดุ ทอ. ต้องเป็น xxxx-xx-xxx-xxxx (ตัวเลขเท่านั้น)'); return; }
   if(ASSETS.some(a=>a.asset_code===code)){ showToast('เลขพัสดุ ทอ.นี้มีอยู่ในระบบแล้ว'); return; }
 
   const newAsset = {
@@ -15534,7 +15521,6 @@ function submitReceive(){
   document.getElementById('rcvCode').value = '';
   document.getElementById('rcvSerial').value = '';
   document.getElementById('rcvRemarks').value = '';
-  autoGenReceiveCode();
 
   showToast('รับเข้าอุปกรณ์ ' + newAsset.asset_code + ' สำเร็จ พร้อม QR เฉพาะชิ้น');
   if(document.getElementById('view-registry').classList.contains('active')) renderRegistry(false);

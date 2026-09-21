@@ -13831,6 +13831,46 @@ async function uploadImageToSheet(assetCode, filename, dataUrl){
   return postToSheet({ action:'upload_image', asset_code: assetCode, filename: filename, mimeType: mimeType, data: base64 }, 'อัปโหลดภาพไป Google Drive ไม่สำเร็จ');
 }
 
+function readFileAsDataUrl_(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = ev => resolve(ev.target.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+/* Uploads files to Drive one at a time (Apps Script can't reliably handle many
+   simultaneous doPost calls) and reports real progress instead of a fire-and-
+   forget "done" message that fires before the server confirms anything. */
+/* Uploads pre-read {name, data} attachments one at a time. */
+async function uploadAttachmentsWithProgress_(assetCode, items){
+  let succeeded = 0;
+  const succeededItems = [];
+  for(let i = 0; i < items.length; i++){
+    const item = items[i];
+    showToast(`กำลังอัปโหลดไฟล์แนบ ${i + 1}/${items.length}...`);
+    const result = await uploadImageToSheet(assetCode, item.name, item.data);
+    if(result && result.ok){
+      succeeded++;
+      succeededItems.push(item);
+    }
+  }
+  showToast(succeeded === items.length
+    ? `อัปโหลดไฟล์แนบสำเร็จครบ ${succeeded} ไฟล์`
+    : `อัปโหลดสำเร็จ ${succeeded} จาก ${items.length} ไฟล์ — ที่เหลือไม่สำเร็จ ลองแนบใหม่อีกครั้ง`);
+  return succeededItems;
+}
+
+/* Reads raw <input type=file> File objects, then delegates to uploadAttachmentsWithProgress_. */
+async function uploadFilesWithProgress_(assetCode, files){
+  const items = [];
+  for(const file of files){
+    items.push({name: file.name, data: await readFileAsDataUrl_(file), isImage: file.type.startsWith('image/')});
+  }
+  return uploadAttachmentsWithProgress_(assetCode, items);
+}
+
 async function syncDeleteImageFromSheet(assetCode, url){
   await postToSheet({ action:'delete_image', asset_code: assetCode, url: url }, 'ลบภาพจาก Google Drive ไม่สำเร็จ');
 }
@@ -14447,23 +14487,15 @@ function renderAttachments(a){
   grid.innerHTML = html;
 }
 
-function onFilesSelected(e){
+async function onFilesSelected(e){
   const a = ASSETS.find(x=>x.id===currentAssetId);
   const files = Array.from(e.target.files);
-  let remaining = files.length;
-  if(remaining===0) return;
-  files.forEach(file=>{
-    const reader = new FileReader();
-    reader.onload = function(ev){
-      a.attachments.push({name:file.name, data:ev.target.result, isImage:file.type.startsWith('image/')});
-      renderAttachments(a);
-      uploadImageToSheet(a.asset_code, file.name, ev.target.result);
-      remaining--;
-      if(remaining===0){ showToast('อัปโหลดไฟล์แนบสำเร็จ ' + files.length + ' ไฟล์'); }
-    };
-    reader.readAsDataURL(file);
-  });
   e.target.value = '';
+  if(files.length===0) return;
+
+  const uploaded = await uploadFilesWithProgress_(a.asset_code, files);
+  uploaded.forEach(f => a.attachments.push(f));
+  renderAttachments(a);
 }
 
 function removeAttachment(idx){
@@ -14542,7 +14574,7 @@ function removeRetAttachment(idx){
   renderRetAttachments();
 }
 
-function confirmReturnAsset(){
+async function confirmReturnAsset(){
   const a = ASSETS.find(x=>x.id===retTargetId);
   if(!a) return;
   const reason = document.getElementById('retReason').value.trim();
@@ -14556,13 +14588,16 @@ function confirmReturnAsset(){
   const dateLabel = datetimeVal.replace('T', ' ');
   const summary = 'สาเหตุ: ' + reason + ' · ผู้รับคืน: ' + recipient + ' · เวลา: ' + dateLabel + ' · โดย ' + actorLabel();
 
+  const uploaded = retAttachments.length
+    ? await uploadAttachmentsWithProgress_(a.asset_code, retAttachments)
+    : [];
+
   a._prevStatus = a.status;
   a.status = 'DISPOSAL';
   a.remarks = a.remarks ? (a.remarks + ' — ' + summary) : summary;
-  a.attachments = a.attachments.concat(retAttachments);
+  a.attachments = a.attachments.concat(uploaded);
   pushHistory(a, {title:'เสนอส่งคืน', doc:'DSP-2569-'+pad(LOG_SEQ++,5), meta: summary, date: dateLabel});
   syncUpdateToSheet(a.asset_code, {status: a.status, remarks: a.remarks});
-  retAttachments.forEach(f => uploadImageToSheet(a.asset_code, f.name, f.data));
 
   closeModal('returnFormModal');
   closeModal('assetModalBackdrop');
@@ -15447,7 +15482,7 @@ function submitReceive(){
     location: location || '-',
     acquired_date: date,
     remarks: remarks,
-    attachments: rcvAttachments,
+    attachments: [],
     history: [
       {title:'รับเข้าคลัง', doc:'REC-2569-'+pad(LOG_SEQ++,5), meta:'โดย ' + actorLabel() + (remarks ? ' — ' + remarks : ''), date:'วันนี้'},
     ],
@@ -15455,7 +15490,11 @@ function submitReceive(){
   ASSETS.push(newAsset);
   syncAddToSheet(newAsset);
   logEntry(newAsset.asset_code, newAsset.history[0]);
-  rcvAttachments.forEach(f => uploadImageToSheet(newAsset.asset_code, f.name, f.data));
+  if(rcvAttachments.length){
+    uploadAttachmentsWithProgress_(newAsset.asset_code, rcvAttachments).then(uploaded => {
+      newAsset.attachments = uploaded;
+    });
+  }
   rememberReceiveValue('type', type);
   rememberReceiveValue('model', model);
   rememberReceiveValue('holder', holder);
